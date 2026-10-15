@@ -10,33 +10,115 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
+import { Route as ApiPublicNeurapayWebhookRouteImport } from './routes/api/public/neurapay-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalletRoute = WalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsSlugRoute = ProductsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => ProductsRoute,
+} as any)
+const ApiPublicNeurapayWebhookRoute =
+  ApiPublicNeurapayWebhookRouteImport.update({
+    id: '/api/public/neurapay-webhook',
+    path: '/api/public/neurapay-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/products': typeof ProductsRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
+  '/wallet': typeof WalletRoute
+  '/products/$slug': typeof ProductsSlugRoute
+  '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/products': typeof ProductsRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
+  '/wallet': typeof WalletRoute
+  '/products/$slug': typeof ProductsSlugRoute
+  '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/products': typeof ProductsRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
+  '/wallet': typeof WalletRoute
+  '/products/$slug': typeof ProductsSlugRoute
+  '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/products'
+    | '/reset-password'
+    | '/wallet'
+    | '/products/$slug'
+    | '/api/public/neurapay-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/products'
+    | '/reset-password'
+    | '/wallet'
+    | '/products/$slug'
+    | '/api/public/neurapay-webhook'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/products'
+    | '/reset-password'
+    | '/wallet'
+    | '/products/$slug'
+    | '/api/public/neurapay-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  ProductsRoute: typeof ProductsRouteWithChildren
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  WalletRoute: typeof WalletRoute
+  ApiPublicNeurapayWebhookRoute: typeof ApiPublicNeurapayWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +130,70 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products/$slug': {
+      id: '/products/$slug'
+      path: '/$slug'
+      fullPath: '/products/$slug'
+      preLoaderRoute: typeof ProductsSlugRouteImport
+      parentRoute: typeof ProductsRoute
+    }
+    '/api/public/neurapay-webhook': {
+      id: '/api/public/neurapay-webhook'
+      path: '/api/public/neurapay-webhook'
+      fullPath: '/api/public/neurapay-webhook'
+      preLoaderRoute: typeof ApiPublicNeurapayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface ProductsRouteChildren {
+  ProductsSlugRoute: typeof ProductsSlugRoute
+}
+
+const ProductsRouteChildren: ProductsRouteChildren = {
+  ProductsSlugRoute: ProductsSlugRoute,
+}
+
+const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
+  ProductsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  ProductsRoute: ProductsRouteWithChildren,
+  ResetPasswordRoute: ResetPasswordRoute,
+  WalletRoute: WalletRoute,
+  ApiPublicNeurapayWebhookRoute: ApiPublicNeurapayWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
