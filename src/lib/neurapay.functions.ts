@@ -146,7 +146,7 @@ export const verifyNeuraPayTopup = createServerFn({ method: "POST" })
       {
         _reference: intent.reference,
         _amount: Number(intent.amount),
-        _provider_reference: checked.providerReference ?? undefined,
+        ...(checked.providerReference ? { _provider_reference: checked.providerReference } : {}),
         _provider_data: JSON.parse(JSON.stringify(checked.payload)),
       },
     );
