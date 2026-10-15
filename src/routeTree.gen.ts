@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsRouteImport } from './routes/products'
+import { Route as ApiPublicNeurapayWebhookRouteImport } from './routes/api/public/neurapay-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,41 @@ const ProductsRoute = ProductsRouteImport.update({
   path: '/products',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicNeurapayWebhookRoute =
+  ApiPublicNeurapayWebhookRouteImport.update({
+    id: '/api/public/neurapay-webhook',
+    path: '/api/public/neurapay-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/products': typeof ProductsRoute
+  '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/products': typeof ProductsRoute
+  '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/products': typeof ProductsRoute
+  '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/products'
+  fullPaths: '/' | '/products' | '/api/public/neurapay-webhook'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/products'
-  id: '__root__' | '/' | '/products'
+  to: '/' | '/products' | '/api/public/neurapay-webhook'
+  id: '__root__' | '/' | '/products' | '/api/public/neurapay-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ProductsRoute: typeof ProductsRoute
+  ApiPublicNeurapayWebhookRoute: typeof ApiPublicNeurapayWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +76,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/neurapay-webhook': {
+      id: '/api/public/neurapay-webhook'
+      path: '/api/public/neurapay-webhook'
+      fullPath: '/api/public/neurapay-webhook'
+      preLoaderRoute: typeof ApiPublicNeurapayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ProductsRoute: ProductsRoute,
+  ApiPublicNeurapayWebhookRoute: ApiPublicNeurapayWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
