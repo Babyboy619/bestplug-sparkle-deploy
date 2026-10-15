@@ -1,15 +1,75 @@
 {
   "source": "code-archive",
   "capabilities": [
-    {"capability":"Pages and branding","source":"uploaded ZIP and logo","outcome":"migrate","status":"in_progress","next_action":"Import home/catalog and recreate missing linked pages with BestPlug styling"},
-    {"capability":"Schema and wallet RPCs","source":"SQL migration","outcome":"migrate","status":"in_progress","next_action":"Apply secure schema in Lovable Cloud"},
-    {"capability":"Existing records","source":"not included","outcome":"migrate","status":"pending","next_action":"User supplies CSV or JSON exports"},
-    {"capability":"Auth identities and ownership","source":"not included","outcome":"migrate","status":"pending","next_action":"User supplies original IDs, verified email addresses, profiles and memberships; verify email/password setup and ownership mapping before granting migrated data"},
-    {"capability":"Authorization","source":"SQL RLS and roles","outcome":"preserve","status":"in_progress","next_action":"Apply and verify owner-scoped reads"},
-    {"capability":"Uploaded file bytes","source":"BestPlug logo","outcome":"migrate","status":"in_progress","next_action":"Store supplied logo as project asset"},
-    {"capability":"NeuraPay payments and secrets","source":"server functions","outcome":"preserve","status":"pending","next_action":"Securely request NeuraPay secret, business ID and webhook secret; verify live funding"},
-    {"capability":"Public webhook and cutover","source":"/api/public/neurapay-webhook","outcome":"preserve","status":"pending","next_action":"Preserve handler; user updates NeuraPay webhook URL after publishing"},
-    {"capability":"Schedules, email, analytics and AI","source":"no app call sites found","outcome":"not_detected","status":"inspected","next_action":"None"},
-    {"capability":"Verification and deployment","source":"requested deployment","outcome":"publish","status":"in_progress","next_action":"Test public pages, auth and wallet; scan security and request publishing"}
+    {
+      "capability": "Pages and branding",
+      "source": "uploaded ZIP and logo",
+      "outcome": "migrate",
+      "status": "verified",
+      "next_action": "None; public navigation, branding and wallet persistence checked"
+    },
+    {
+      "capability": "Schema and wallet RPCs",
+      "source": "SQL migration",
+      "outcome": "migrate",
+      "status": "verified",
+      "next_action": "None; public navigation, branding and wallet persistence checked"
+    },
+    {
+      "capability": "Existing records",
+      "source": "not included",
+      "outcome": "migrate",
+      "status": "pending",
+      "next_action": "User supplies CSV or JSON exports"
+    },
+    {
+      "capability": "Auth identities and ownership",
+      "source": "not included",
+      "outcome": "migrate",
+      "status": "pending",
+      "next_action": "User supplies original IDs, verified email addresses, profiles and memberships; verify email/password setup and ownership mapping before granting migrated data"
+    },
+    {
+      "capability": "Authorization",
+      "source": "SQL RLS and roles",
+      "outcome": "preserve",
+      "status": "verified",
+      "next_action": "None; public navigation, branding and wallet persistence checked"
+    },
+    {
+      "capability": "Uploaded file bytes",
+      "source": "BestPlug logo",
+      "outcome": "migrate",
+      "status": "verified",
+      "next_action": "None; public navigation, branding and wallet persistence checked"
+    },
+    {
+      "capability": "NeuraPay payments and secrets",
+      "source": "server functions",
+      "outcome": "preserve",
+      "status": "pending",
+      "next_action": "Secure credential setup skipped by user; live funding remains inactive and unverified"
+    },
+    {
+      "capability": "Public webhook and cutover",
+      "source": "/api/public/neurapay-webhook",
+      "outcome": "preserve",
+      "status": "pending",
+      "next_action": "Preserve handler; user updates NeuraPay webhook URL after publishing"
+    },
+    {
+      "capability": "Schedules, email, analytics and AI",
+      "source": "no app call sites found",
+      "outcome": "not_detected",
+      "status": "inspected",
+      "next_action": "None"
+    },
+    {
+      "capability": "Verification and deployment",
+      "source": "requested deployment",
+      "outcome": "publish",
+      "status": "verified_preview",
+      "next_action": "Request publishing; real sign-in, wallet persistence and sign-out passed; payments and imported users pending"
+    }
   ]
 }
