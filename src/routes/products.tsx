@@ -20,9 +20,9 @@ type Product = {
 };
 
 export const Route = createFileRoute("/products")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    category: typeof search.category === "string" ? search.category : "",
-    q: typeof search.q === "string" ? search.q : "",
+  validateSearch: (search: Record<string, unknown>): { category?: string; q?: string } => ({
+    category: typeof search["category"] === "string" ? search["category"] : "",
+    q: typeof search["q"] === "string" ? search["q"] : "",
   }),
   head: () => ({
     meta: [
@@ -41,8 +41,8 @@ function ProductListingPage() {
   const { category: initialCategory, q: initialQuery } = Route.useSearch();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [category, setCategory] = useState(initialCategory);
-  const [query, setQuery] = useState(initialQuery);
+  const [category, setCategory] = useState(initialCategory ?? "");
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 

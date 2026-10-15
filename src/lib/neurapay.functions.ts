@@ -65,7 +65,7 @@ export const startNeuraPayTopup = createServerFn({ method: "POST" })
     const paymentUrl = neurapay.safeHttpsUrl(
       neurapay.findNeuraPayField(response.json, ["paymentUrl", "payment_url", "checkoutUrl", "checkout_url", "authorization_url", "link", "url"]),
     );
-    const explicitFailure = response.json?.success === false || response.json?.status === "failed";
+    const explicitFailure = response.json?.["success"] === false || response.json?.["status"] === "failed";
 
     if (!response.ok || explicitFailure || (!accountNumber && !paymentUrl)) {
       await supabaseAdmin
@@ -146,7 +146,7 @@ export const verifyNeuraPayTopup = createServerFn({ method: "POST" })
       {
         _reference: intent.reference,
         _amount: Number(intent.amount),
-        _provider_reference: checked.providerReference,
+        _provider_reference: checked.providerReference ?? undefined,
         _provider_data: JSON.parse(JSON.stringify(checked.payload)),
       },
     );

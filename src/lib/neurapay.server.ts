@@ -85,7 +85,7 @@ export function safeHttpsUrl(value: unknown): string | null {
 
 export function transactionPayload(value: Record<string, unknown> | null): Record<string, unknown> {
   if (!value) return {};
-  return isRecord(value.data) ? value.data : value;
+  return isRecord(value["data"]) ? value["data"] : value;
 }
 
 export interface VerifiedTransaction {
@@ -130,7 +130,7 @@ export async function verifyNeuraPayTransaction(
 
   const paidAmount = findNeuraPayField(payload, ["amountPaid", "amount_paid", "settledAmount", "amount", "value"]);
   const numericPaid = Number(paidAmount);
-  if (paidAmount !== undefined && (!Number.isFinite(numericPaid) || Math.abs(numericPaid - expectedAmount) > 0.5)) {
+  if (paidAmount === undefined || !Number.isFinite(numericPaid) || Math.abs(numericPaid - expectedAmount) > 0.01) {
     return { confirmed: false, status: "failed", reason: "amount_mismatch", providerReference: null, payload };
   }
 
@@ -170,7 +170,7 @@ export async function verifyNeuraPayWebhookSignature(
   );
   let difference = 0;
   for (let index = 0; index < signature.length; index += 1) {
-    difference |= signature[index] ^ Number.parseInt(candidate.slice(index * 2, index * 2 + 2), 16);
+    difference |= (signature[index] ?? 0) ^ Number.parseInt(candidate.slice(index * 2, index * 2 + 2), 16);
   }
   return difference === 0;
 }

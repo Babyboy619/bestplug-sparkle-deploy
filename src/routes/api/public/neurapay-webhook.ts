@@ -93,7 +93,7 @@ export const Route = createFileRoute("/api/public/neurapay-webhook")({
         const { data: settlement, error } = await supabaseAdmin.rpc("settle_neurapay_payment", {
           _reference: intent.reference,
           _amount: Number(intent.amount),
-          _provider_reference: checked.providerReference ?? (providerReferenceValue === undefined ? null : String(providerReferenceValue)),
+          _provider_reference: checked.providerReference ?? (providerReferenceValue === undefined ? undefined : String(providerReferenceValue)),
           _provider_data: JSON.parse(JSON.stringify(checked.payload)),
         });
         if (error) {
