@@ -10,10 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountSettingsRouteImport } from './routes/account-settings'
+import { Route as AchievementsRouteImport } from './routes/achievements'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BoostAccountsRouteImport } from './routes/boost-accounts'
+import { Route as CartRouteImport } from './routes/cart'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as PayBillsRouteImport } from './routes/pay-bills'
 import { Route as ProductsRouteImport } from './routes/products'
+import { Route as RecentlyViewedRouteImport } from './routes/recently-viewed'
+import { Route as ReferEarnRouteImport } from './routes/refer-earn'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SmsVerifyRouteImport } from './routes/sms-verify'
 import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as ApiPublicNeurapayWebhookRouteImport } from './routes/api/public/neurapay-webhook'
 
@@ -22,9 +34,49 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountSettingsRoute = AccountSettingsRouteImport.update({
+  id: '/account-settings',
+  path: '/account-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AchievementsRoute = AchievementsRouteImport.update({
+  id: '/achievements',
+  path: '/achievements',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BoostAccountsRoute = BoostAccountsRouteImport.update({
+  id: '/boost-accounts',
+  path: '/boost-accounts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CartRoute = CartRouteImport.update({
+  id: '/cart',
+  path: '/cart',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayBillsRoute = PayBillsRouteImport.update({
+  id: '/pay-bills',
+  path: '/pay-bills',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsRoute = ProductsRouteImport.update({
@@ -32,14 +84,34 @@ const ProductsRoute = ProductsRouteImport.update({
   path: '/products',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecentlyViewedRoute = RecentlyViewedRouteImport.update({
+  id: '/recently-viewed',
+  path: '/recently-viewed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReferEarnRoute = ReferEarnRouteImport.update({
+  id: '/refer-earn',
+  path: '/refer-earn',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SmsVerifyRoute = SmsVerifyRouteImport.update({
+  id: '/sms-verify',
+  path: '/sms-verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WalletRoute = WalletRouteImport.update({
   id: '/wallet',
   path: '/wallet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WishlistRoute = WishlistRouteImport.update({
+  id: '/wishlist',
+  path: '/wishlist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsSlugRoute = ProductsSlugRouteImport.update({
@@ -56,29 +128,65 @@ const ApiPublicNeurapayWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account-settings': typeof AccountSettingsRoute
+  '/achievements': typeof AchievementsRoute
   '/auth': typeof AuthRoute
+  '/boost-accounts': typeof BoostAccountsRoute
+  '/cart': typeof CartRoute
+  '/contact': typeof ContactRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/pay-bills': typeof PayBillsRoute
   '/products': typeof ProductsRouteWithChildren
+  '/recently-viewed': typeof RecentlyViewedRoute
+  '/refer-earn': typeof ReferEarnRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sms-verify': typeof SmsVerifyRoute
   '/wallet': typeof WalletRoute
+  '/wishlist': typeof WishlistRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account-settings': typeof AccountSettingsRoute
+  '/achievements': typeof AchievementsRoute
   '/auth': typeof AuthRoute
+  '/boost-accounts': typeof BoostAccountsRoute
+  '/cart': typeof CartRoute
+  '/contact': typeof ContactRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/pay-bills': typeof PayBillsRoute
   '/products': typeof ProductsRouteWithChildren
+  '/recently-viewed': typeof RecentlyViewedRoute
+  '/refer-earn': typeof ReferEarnRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sms-verify': typeof SmsVerifyRoute
   '/wallet': typeof WalletRoute
+  '/wishlist': typeof WishlistRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account-settings': typeof AccountSettingsRoute
+  '/achievements': typeof AchievementsRoute
   '/auth': typeof AuthRoute
+  '/boost-accounts': typeof BoostAccountsRoute
+  '/cart': typeof CartRoute
+  '/contact': typeof ContactRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/leaderboard': typeof LeaderboardRoute
+  '/pay-bills': typeof PayBillsRoute
   '/products': typeof ProductsRouteWithChildren
+  '/recently-viewed': typeof RecentlyViewedRoute
+  '/refer-earn': typeof ReferEarnRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sms-verify': typeof SmsVerifyRoute
   '/wallet': typeof WalletRoute
+  '/wishlist': typeof WishlistRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
 }
@@ -86,38 +194,86 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account-settings'
+    | '/achievements'
     | '/auth'
+    | '/boost-accounts'
+    | '/cart'
+    | '/contact'
+    | '/how-it-works'
+    | '/leaderboard'
+    | '/pay-bills'
     | '/products'
+    | '/recently-viewed'
+    | '/refer-earn'
     | '/reset-password'
+    | '/sms-verify'
     | '/wallet'
+    | '/wishlist'
     | '/products/$slug'
     | '/api/public/neurapay-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account-settings'
+    | '/achievements'
     | '/auth'
+    | '/boost-accounts'
+    | '/cart'
+    | '/contact'
+    | '/how-it-works'
+    | '/leaderboard'
+    | '/pay-bills'
     | '/products'
+    | '/recently-viewed'
+    | '/refer-earn'
     | '/reset-password'
+    | '/sms-verify'
     | '/wallet'
+    | '/wishlist'
     | '/products/$slug'
     | '/api/public/neurapay-webhook'
   id:
     | '__root__'
     | '/'
+    | '/account-settings'
+    | '/achievements'
     | '/auth'
+    | '/boost-accounts'
+    | '/cart'
+    | '/contact'
+    | '/how-it-works'
+    | '/leaderboard'
+    | '/pay-bills'
     | '/products'
+    | '/recently-viewed'
+    | '/refer-earn'
     | '/reset-password'
+    | '/sms-verify'
     | '/wallet'
+    | '/wishlist'
     | '/products/$slug'
     | '/api/public/neurapay-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountSettingsRoute: typeof AccountSettingsRoute
+  AchievementsRoute: typeof AchievementsRoute
   AuthRoute: typeof AuthRoute
+  BoostAccountsRoute: typeof BoostAccountsRoute
+  CartRoute: typeof CartRoute
+  ContactRoute: typeof ContactRoute
+  HowItWorksRoute: typeof HowItWorksRoute
+  LeaderboardRoute: typeof LeaderboardRoute
+  PayBillsRoute: typeof PayBillsRoute
   ProductsRoute: typeof ProductsRouteWithChildren
+  RecentlyViewedRoute: typeof RecentlyViewedRoute
+  ReferEarnRoute: typeof ReferEarnRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SmsVerifyRoute: typeof SmsVerifyRoute
   WalletRoute: typeof WalletRoute
+  WishlistRoute: typeof WishlistRoute
   ApiPublicNeurapayWebhookRoute: typeof ApiPublicNeurapayWebhookRoute
 }
 
@@ -130,11 +286,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account-settings': {
+      id: '/account-settings'
+      path: '/account-settings'
+      fullPath: '/account-settings'
+      preLoaderRoute: typeof AccountSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/achievements': {
+      id: '/achievements'
+      path: '/achievements'
+      fullPath: '/achievements'
+      preLoaderRoute: typeof AchievementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/boost-accounts': {
+      id: '/boost-accounts'
+      path: '/boost-accounts'
+      fullPath: '/boost-accounts'
+      preLoaderRoute: typeof BoostAccountsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cart': {
+      id: '/cart'
+      path: '/cart'
+      fullPath: '/cart'
+      preLoaderRoute: typeof CartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pay-bills': {
+      id: '/pay-bills'
+      path: '/pay-bills'
+      fullPath: '/pay-bills'
+      preLoaderRoute: typeof PayBillsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products': {
@@ -144,6 +356,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recently-viewed': {
+      id: '/recently-viewed'
+      path: '/recently-viewed'
+      fullPath: '/recently-viewed'
+      preLoaderRoute: typeof RecentlyViewedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refer-earn': {
+      id: '/refer-earn'
+      path: '/refer-earn'
+      fullPath: '/refer-earn'
+      preLoaderRoute: typeof ReferEarnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -151,11 +377,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sms-verify': {
+      id: '/sms-verify'
+      path: '/sms-verify'
+      fullPath: '/sms-verify'
+      preLoaderRoute: typeof SmsVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wallet': {
       id: '/wallet'
       path: '/wallet'
       fullPath: '/wallet'
       preLoaderRoute: typeof WalletRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wishlist': {
+      id: '/wishlist'
+      path: '/wishlist'
+      fullPath: '/wishlist'
+      preLoaderRoute: typeof WishlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products/$slug': {
@@ -189,10 +429,22 @@ const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountSettingsRoute: AccountSettingsRoute,
+  AchievementsRoute: AchievementsRoute,
   AuthRoute: AuthRoute,
+  BoostAccountsRoute: BoostAccountsRoute,
+  CartRoute: CartRoute,
+  ContactRoute: ContactRoute,
+  HowItWorksRoute: HowItWorksRoute,
+  LeaderboardRoute: LeaderboardRoute,
+  PayBillsRoute: PayBillsRoute,
   ProductsRoute: ProductsRouteWithChildren,
+  RecentlyViewedRoute: RecentlyViewedRoute,
+  ReferEarnRoute: ReferEarnRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SmsVerifyRoute: SmsVerifyRoute,
   WalletRoute: WalletRoute,
+  WishlistRoute: WishlistRoute,
   ApiPublicNeurapayWebhookRoute: ApiPublicNeurapayWebhookRoute,
 }
 export const routeTree = rootRouteImport
