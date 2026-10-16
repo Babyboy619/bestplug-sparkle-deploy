@@ -68,8 +68,8 @@
       "capability": "Verification and deployment",
       "source": "requested deployment",
       "outcome": "publish",
-      "status": "verified_preview",
-      "next_action": "Request publishing; real sign-in, wallet persistence and sign-out passed; payments and imported users pending"
+      "status": "publishing_requested",
+      "next_action": "Deployment completion unverified; expected URL https://bestplug-sparkle-deploy.lovable.app"
     }
   ]
 }
