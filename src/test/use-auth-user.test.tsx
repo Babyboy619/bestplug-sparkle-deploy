@@ -1,0 +1,101 @@
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AuthProvider, useAuthUser } from "@/hooks/use-auth-user";
+
+const mocks = vi.hoisted(() => ({
+  authCallbacks: [] as Array<(event: AuthChangeEvent, session: Session | null) => void>,
+  rpc: vi.fn(),
+}));
+
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    auth: {
+      onAuthStateChange: (callback: (event: AuthChangeEvent, session: Session | null) => void) => {
+        mocks.authCallbacks.push(callback);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      },
+    },
+    rpc: mocks.rpc,
+  },
+}));
+
+function AuthStatus() {
+  const { user, loading, isAdmin, roleLoading, roleError, retryAdminVerification } = useAuthUser();
+
+  return (
+    <>
+      <output data-testid="auth">{loading ? "loading" : (user?.id ?? "signed-out")}</output>
+      <output data-testid="role">
+        {roleLoading ? "checking" : roleError ? "error" : isAdmin ? "admin" : "not-admin"}
+      </output>
+      <button onClick={retryAdminVerification}>Retry</button>
+    </>
+  );
+}
+
+describe("AuthProvider administrator verification", () => {
+  beforeEach(() => {
+    mocks.authCallbacks = [];
+    mocks.rpc.mockReset();
+  });
+
+  it("waits for the restored session, checks its UUID, and allows retry after an error", async () => {
+    mocks.rpc
+      .mockResolvedValueOnce({ data: null, error: new Error("temporary database failure") })
+      .mockResolvedValueOnce({ data: true, error: null });
+
+    render(
+      <AuthProvider>
+        <AuthStatus />
+      </AuthProvider>,
+    );
+
+    expect(screen.getByTestId("auth")).toHaveTextContent("loading");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+
+    const session = {
+      user: { id: "actual-auth-user-uuid" },
+    } as Session;
+    const initializeSession = mocks.authCallbacks[0];
+    if (!initializeSession) throw new Error("Auth state subscription was not registered.");
+    act(() => initializeSession("INITIAL_SESSION", session));
+
+    await waitFor(() => expect(screen.getByTestId("role")).toHaveTextContent("error"));
+    expect(screen.getByTestId("auth")).toHaveTextContent("actual-auth-user-uuid");
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "is_active_admin", {
+      _user_id: "actual-auth-user-uuid",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.getByTestId("role")).toHaveTextContent("admin"));
+    expect(mocks.rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not authorize a regular user and clears access after sign-out", async () => {
+    mocks.rpc.mockResolvedValue({ data: false, error: null });
+
+    render(
+      <AuthProvider>
+        <AuthStatus />
+      </AuthProvider>,
+    );
+
+    const initializeSession = mocks.authCallbacks[0];
+    if (!initializeSession) throw new Error("Auth state subscription was not registered.");
+    act(() =>
+      initializeSession("INITIAL_SESSION", { user: { id: "regular-user-uuid" } } as Session),
+    );
+
+    await waitFor(() => expect(screen.getByTestId("role")).toHaveTextContent("not-admin"));
+    expect(mocks.rpc).toHaveBeenCalledWith("is_active_admin", {
+      _user_id: "regular-user-uuid",
+    });
+
+    act(() => initializeSession("SIGNED_OUT", null));
+    await waitFor(() => {
+      expect(screen.getByTestId("auth")).toHaveTextContent("signed-out");
+      expect(screen.getByTestId("role")).toHaveTextContent("not-admin");
+    });
+  });
+});

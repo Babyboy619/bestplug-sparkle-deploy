@@ -45,3 +45,45 @@ The administrator category and notification features are added by
 from a persistent in-app feed with per-user read receipts; sending does not
 depend on an external email or push-notification provider. Category deletion is
 archival and requires reassignment when products are linked to that category.
+
+The `0006_repair_marketplace_admin_assignment.sql` migration rechecks the
+existing `bestplugmarketplace@gmail.com` Supabase Auth account and idempotently
+assigns its database UUID the `admin` role. If the account did not exist when
+the migration ran, create/sign in to the existing account first, then run this
+targeted operation in the Supabase SQL Editor (the account must have a verified
+email):
+
+```sql
+DO $$
+DECLARE
+  target_user_id uuid;
+  matching_users integer;
+BEGIN
+  SELECT count(*) INTO matching_users
+  FROM auth.users
+  WHERE lower(email) = 'bestplugmarketplace@gmail.com'
+    AND email_confirmed_at IS NOT NULL;
+
+  IF matching_users <> 1 THEN
+    RAISE EXCEPTION 'Expected exactly one verified Auth account for bestplugmarketplace@gmail.com; found %.', matching_users;
+  END IF;
+
+  SELECT id INTO target_user_id
+  FROM auth.users
+  WHERE lower(email) = 'bestplugmarketplace@gmail.com'
+    AND email_confirmed_at IS NOT NULL;
+
+  INSERT INTO public.profiles (id, email)
+  SELECT id, email
+  FROM auth.users
+  WHERE id = target_user_id
+  ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email;
+
+  INSERT INTO public.user_roles (user_id, role)
+  VALUES (target_user_id, 'admin')
+  ON CONFLICT (user_id, role) DO NOTHING;
+END $$;
+```
+
+This operation grants the role only to the matching existing Auth UUID. It
+does not create an Auth account or allow users to change their own role.

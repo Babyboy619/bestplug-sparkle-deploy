@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -8,6 +16,7 @@ type AuthState = {
   isAdmin: boolean;
   roleLoading: boolean;
   roleError: string | null;
+  retryAdminVerification: () => void;
 };
 
 const AuthContext = createContext<AuthState>({
@@ -16,6 +25,7 @@ const AuthContext = createContext<AuthState>({
   isAdmin: false,
   roleLoading: true,
   roleError: null,
+  retryAdminVerification: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -24,88 +34,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleLoading, setRoleLoading] = useState(true);
   const [roleError, setRoleError] = useState<string | null>(null);
+  const [roleRetry, setRoleRetry] = useState(0);
+  const currentUserId = useRef<string | null>(null);
+  const retryAdminVerification = useCallback(() => setRoleRetry((attempt) => attempt + 1), []);
 
   useEffect(() => {
-    let active = true;
-    let roleRequest = 0;
-
-    function updateUser(nextUser: User | null) {
-      const request = ++roleRequest;
-      setUser(nextUser);
-      setLoading(false);
-      setRoleError(null);
-
-      if (!nextUser) {
-        setIsAdmin(false);
-        setRoleLoading(false);
-        return;
-      }
-
-      setIsAdmin(false);
-      setRoleLoading(true);
-      queueMicrotask(() => {
-        void (async () => {
-          try {
-            const { data, error } = await supabase.rpc("is_active_admin", {
-              _user_id: nextUser.id,
-            });
-            if (!active || request !== roleRequest) return;
-            if (error) {
-              console.error("Administrator role verification failed:", error);
-              setRoleError("Administrator access could not be verified. Please try again.");
-              setIsAdmin(false);
-            } else {
-              setIsAdmin(data === true);
-            }
-            setRoleLoading(false);
-          } catch (error) {
-            if (!active || request !== roleRequest) return;
-            console.error("Administrator role verification failed:", error);
-            setRoleError("Administrator access could not be verified. Please try again.");
-            setIsAdmin(false);
-            setRoleLoading(false);
-          }
-        })();
-      });
-    }
-
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       if (
-        ["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT", "TOKEN_REFRESHED", "USER_UPDATED"].includes(
+        !["INITIAL_SESSION", "SIGNED_IN", "SIGNED_OUT", "TOKEN_REFRESHED", "USER_UPDATED"].includes(
           event,
         )
       ) {
-        updateUser(session?.user ?? null);
+        return;
       }
+      const nextUser = session?.user ?? null;
+      if (currentUserId.current !== (nextUser?.id ?? null)) {
+        currentUserId.current = nextUser?.id ?? null;
+        setIsAdmin(false);
+        setRoleLoading(Boolean(nextUser));
+        setRoleError(null);
+      }
+      setUser(nextUser);
+      setLoading(false);
     });
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, []);
 
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (loading) return;
+    let active = true;
+
+    if (!userId) {
+      setIsAdmin(false);
+      setRoleLoading(false);
+      setRoleError(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    setIsAdmin(false);
+    setRoleLoading(true);
+    setRoleError(null);
     void (async () => {
       try {
-        const { data: result, error } = await supabase.auth.getUser();
+        const { data, error } = await supabase.rpc("is_active_admin", {
+          _user_id: userId,
+        });
         if (!active) return;
         if (error) {
-          console.error("Could not restore the authenticated user:", error);
-          setLoading(false);
-          setRoleLoading(false);
-          return;
+          console.error("Administrator role verification failed:", error);
+          setRoleError("Administrator access could not be verified. Please try again.");
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(data === true);
         }
-        updateUser(result.user);
       } catch (error) {
         if (!active) return;
-        console.error("Could not restore the authenticated user:", error);
-        setLoading(false);
-        setRoleLoading(false);
+        console.error("Administrator role verification failed:", error);
+        setRoleError("Administrator access could not be verified. Please try again.");
+        setIsAdmin(false);
+      } finally {
+        if (active) setRoleLoading(false);
       }
     })();
 
     return () => {
       active = false;
-      data.subscription.unsubscribe();
     };
-  }, []);
+  }, [userId, loading, roleRetry]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, roleLoading, roleError }}>
+    <AuthContext.Provider
+      value={{ user, loading, isAdmin, roleLoading, roleError, retryAdminVerification }}
+    >
       {children}
     </AuthContext.Provider>
   );

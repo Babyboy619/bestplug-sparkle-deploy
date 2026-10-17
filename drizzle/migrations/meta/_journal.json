@@ -43,6 +43,13 @@
       "when": 1792246937711,
       "tag": "0005_admin_categories_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792253409000,
+      "tag": "0006_repair_marketplace_admin_assignment",
+      "breakpoints": true
     }
   ]
 }

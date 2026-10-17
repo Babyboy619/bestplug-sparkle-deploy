@@ -33,7 +33,7 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminPage() {
-  const { user, loading, isAdmin, roleLoading, roleError } = useAuthUser();
+  const { user, loading, isAdmin, roleLoading, roleError, retryAdminVerification } = useAuthUser();
   const loadOverview = useServerFn(adminDashboardOverview);
   const [section, setSection] = useState<AdminSection>("overview");
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -87,9 +87,17 @@ function AdminPage() {
             </Button>
           </div>
         ) : roleError ? (
-          <p className="mt-8 rounded-lg border border-destructive p-4 text-sm" role="alert">
-            {roleError}
-          </p>
+          <div className="mt-8 rounded-lg border border-destructive p-4 text-sm" role="alert">
+            <p>{roleError}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3"
+              onClick={retryAdminVerification}
+            >
+              Retry verification
+            </Button>
+          </div>
         ) : !isAdmin ? (
           <p className="mt-8 rounded-lg border border-destructive p-4 text-sm" role="alert">
             This account is not authorized to access the Admin Dashboard.
