@@ -25,7 +25,7 @@ export function getPaystarkConfig(): PaystarkConfig {
   try {
     baseUrl = new URL(configuredBase);
   } catch {
-    throw new Error("PayStark payment configuration is invalid.");
+    throw new Error("Paystack payment configuration is invalid.");
   }
   if (
     !secretKey ||
@@ -33,7 +33,7 @@ export function getPaystarkConfig(): PaystarkConfig {
     baseUrl.hostname !== "api.paystack.co" ||
     baseUrl.pathname !== "/"
   ) {
-    throw new Error("PayStark payments are not configured.");
+    throw new Error("Paystack payments are not configured.");
   }
   return { secretKey, baseUrl: baseUrl.origin };
 }
@@ -61,11 +61,11 @@ async function paystarkRequest(
       signal: AbortSignal.timeout(15_000),
     });
   } catch {
-    throw new Error("PayStark could not be reached. Please try again shortly.");
+    throw new Error("Paystack could not be reached. Please try again shortly.");
   }
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok || !isRecord(payload) || payload["status"] !== true) {
-    throw new Error("PayStark could not process the request. Please try again shortly.");
+    throw new Error("Paystack could not process the request. Please try again shortly.");
   }
   return payload as ProviderEnvelope;
 }
@@ -95,16 +95,16 @@ export async function initializePaystarkTransaction(
     typeof accessCode !== "string" ||
     reference !== input.reference
   ) {
-    throw new Error("PayStark returned an invalid checkout response.");
+    throw new Error("Paystack returned an invalid checkout response.");
   }
   let checkoutUrl: URL;
   try {
     checkoutUrl = new URL(authorizationUrl);
   } catch {
-    throw new Error("PayStark returned an invalid checkout URL.");
+    throw new Error("Paystack returned an invalid checkout URL.");
   }
   if (checkoutUrl.protocol !== "https:" || checkoutUrl.hostname !== "checkout.paystack.com") {
-    throw new Error("PayStark returned an unsupported checkout URL.");
+    throw new Error("Paystack returned an unsupported checkout URL.");
   }
   return { authorizationUrl: checkoutUrl.toString(), accessCode, reference };
 }

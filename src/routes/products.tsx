@@ -203,9 +203,16 @@ function ProductListingPage() {
           </div>
         ) : matchingProducts.length > 0 ? (
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {matchingProducts.map((product) => (
-              <CatalogProductCard key={product.id} product={product} />
-            ))}
+            {matchingProducts.map((product) => {
+              const categoryName = categories.find((item) => item.id === product.category_id)?.name;
+              return (
+                <CatalogProductCard
+                  key={product.id}
+                  product={product}
+                  {...(categoryName ? { categoryName } : {})}
+                />
+              );
+            })}
           </div>
         ) : (
           <div className="mt-6 border-y border-border py-12 text-center">

@@ -25,7 +25,7 @@ const contactMethods = [
     icon: Send,
   },
   {
-    label: "WhatsApp Support",
+    label: "WhatsApp Direct Contact",
     buttonLabel: "Chat on WhatsApp",
     href: siteConfig.contacts.whatsappDirect,
     icon: MessageCircle,
@@ -58,6 +58,14 @@ function ContactPage() {
                   <ArrowUpRight aria-hidden="true" />
                 </a>
               </Button>
+              <a
+                className="mt-3 block break-all text-xs text-muted-foreground underline underline-offset-4"
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {href}
+              </a>
             </article>
           ))}
           <article className="min-h-48 p-5 sm:border-l sm:border-border">

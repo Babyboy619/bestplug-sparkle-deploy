@@ -8,7 +8,11 @@ import { Input } from "@/components/ui/input";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { supabase } from "@/integrations/supabase/client";
 import { pageHead } from "@/lib/metadata";
-import { saveProfileName, validateAccountEmail } from "@/lib/account.functions";
+import {
+  saveProfileName,
+  validateAccountEmail,
+  validateAccountPassword,
+} from "@/lib/account.functions";
 
 export const Route = createFileRoute("/account-settings")({
   head: () => pageHead("Account Settings", "Manage your profile and account security."),
@@ -20,6 +24,7 @@ function AccountSettingsPage() {
   const navigate = useNavigate();
   const saveName = useServerFn(saveProfileName);
   const validateEmail = useServerFn(validateAccountEmail);
+  const validatePassword = useServerFn(validateAccountPassword);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -100,21 +105,12 @@ function AccountSettingsPage() {
 
   async function savePasswordChange(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setError(true);
-      setMessage("The new password and confirmation do not match.");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setError(true);
-      setMessage("Use at least 8 characters for your new password.");
-      return;
-    }
     if (!user?.email) return;
     setBusy(true);
     setMessage("");
     setError(false);
     try {
+      await validatePassword({ data: { password: newPassword, confirmation: confirmPassword } });
       const { error: reauthError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: currentPassword,
@@ -122,10 +118,15 @@ function AccountSettingsPage() {
       if (reauthError) throw new Error("Current password is incorrect.");
       const { error: passwordError } = await supabase.auth.updateUser({ password: newPassword });
       if (passwordError) throw passwordError;
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "others" });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setMessage("Password updated.");
+      setMessage(
+        signOutError
+          ? "Password updated, but other sessions could not be signed out."
+          : "Password updated. Other sessions have been signed out.",
+      );
     } catch (cause) {
       setError(true);
       setMessage(cause instanceof Error ? cause.message : "Password could not be updated.");

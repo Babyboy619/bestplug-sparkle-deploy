@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/products/$slug")({
 });
 function Details() {
   const { slug } = Route.useParams();
+  const navigate = useNavigate();
   const { user } = useAuthUser();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);

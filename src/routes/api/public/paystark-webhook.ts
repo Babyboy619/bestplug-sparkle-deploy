@@ -58,7 +58,7 @@ export const Route = createFileRoute("/api/public/paystark-webhook")({
           _provider_data: JSON.parse(JSON.stringify(checked.payload)),
         });
         if (error) {
-          console.error("PayStark settlement failed", { reference: intent.reference });
+          console.error("Paystack settlement failed", { reference: intent.reference });
           return Response.json({ error: "Settlement could not be completed." }, { status: 500 });
         }
         return Response.json({

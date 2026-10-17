@@ -12,7 +12,13 @@ type Product = Pick<
   "id" | "title" | "slug" | "description" | "price" | "currency" | "stock" | "image_url"
 >;
 
-export function CatalogProductCard({ product }: { product: Product }) {
+export function CatalogProductCard({
+  product,
+  categoryName,
+}: {
+  product: Product;
+  categoryName?: string;
+}) {
   const { user } = useAuthUser();
   const navigate = useNavigate();
   const [wishlisted, setWishlisted] = useState(false);
@@ -112,6 +118,11 @@ export function CatalogProductCard({ product }: { product: Product }) {
       </div>
       <div className="flex flex-1 flex-col p-4">
         <h2 className="line-clamp-2 font-semibold">{product.title}</h2>
+        {categoryName && (
+          <p className="mt-1 text-xs font-medium text-primary" aria-label="Platform">
+            {categoryName}
+          </p>
+        )}
         {product.description && (
           <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">
             {product.description}

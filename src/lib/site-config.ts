@@ -1,5 +1,5 @@
 export const siteConfig = {
-  paymentProviderName: "PayStark",
+  paymentProviderName: "Paystack",
   contacts: {
     whatsappCommunity: "https://chat.whatsapp.com/Jo0Ax9U6fHa4l7p9fdAG0n",
     telegram: "https://t.me/besttplug",

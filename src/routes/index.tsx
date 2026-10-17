@@ -9,6 +9,7 @@ import {
   ShoppingBag,
   Smartphone,
   Trophy,
+  UserRound,
   Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -79,8 +80,19 @@ function DashboardPage() {
         <div className="mb-6">
           <p className="text-xs font-semibold uppercase text-primary">BESTPLUG MARKETPLACE</p>
           <div className="mt-2 flex items-center gap-3">
-            {avatarUrl && (
-              <img src={avatarUrl} alt="" className="size-10 rounded-full border border-border object-cover" />
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt=""
+                className="size-10 rounded-full border border-border object-cover"
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className="flex size-10 items-center justify-center rounded-full border border-border bg-secondary"
+              >
+                <UserRound className="size-5 text-muted-foreground" />
+              </span>
             )}
             <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
               Welcome back{displayName ? `, ${displayName}` : ""}

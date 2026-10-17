@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ArrowUpRight,
   Bell,
@@ -46,7 +46,7 @@ type MenuItem = {
 
 const menuSections: { title: string; items: MenuItem[] }[] = [
   {
-    title: "General Menu",
+    title: "General",
     items: [
       { to: "/", label: "Dashboard", icon: Home },
       { to: "/how-it-works", label: "How It Works", icon: BookOpen },
@@ -90,7 +90,10 @@ const bottomItems = [
 ] as const;
 
 export function SiteFrame({ children }: { children: ReactNode }) {
-  const { user, role } = useAuthUser();
+  const { user, role, loading } = useAuthUser();
+  const { pathname, hash } = useRouterState({
+    select: (state) => ({ pathname: state.location.pathname, hash: state.location.hash }),
+  });
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [cartCount, setCartCount] = useState(0);
@@ -290,15 +293,23 @@ export function SiteFrame({ children }: { children: ReactNode }) {
       <nav aria-label="Primary mobile navigation" className="lux-dock md:hidden">
         {bottomItems.map((item) => {
           const { to, label, icon: Icon, exact } = item;
-          const hash = "hash" in item ? item.hash : undefined;
+          const itemHash = "hash" in item ? item.hash : undefined;
+          const isActive =
+            pathname === to
+              ? itemHash
+                ? itemHash === hash
+                : to === "/wallet"
+                  ? !hash
+                  : true
+              : !exact && pathname.startsWith(`${to}/`);
           return (
             <Link
               key={`${to}-${label}`}
               to={to}
-              {...(hash ? { hash } : {})}
+              {...(itemHash ? { hash: itemHash } : {})}
               activeOptions={{ exact }}
-              className="lux-dock-item"
-              activeProps={{ className: "lux-dock-active" }}
+              aria-current={isActive ? "page" : undefined}
+              className={`lux-dock-item${isActive ? " lux-dock-active" : ""}`}
             >
               <span className="relative">
                 <Icon aria-hidden="true" className="size-5" />
@@ -339,7 +350,11 @@ export function SiteFrame({ children }: { children: ReactNode }) {
           </div>
           <div>
             <p className="text-sm font-semibold">Your account</p>
-            {user ? (
+            {loading ? (
+              <p className="mt-3 text-sm text-muted-foreground" role="status">
+                Checking your session…
+              </p>
+            ) : user ? (
               <>
                 <Link className="mt-3 block text-sm text-muted-foreground" to="/account-settings">
                   Account Settings
@@ -361,9 +376,18 @@ export function SiteFrame({ children }: { children: ReactNode }) {
                 </Button>
               </>
             ) : (
-              <Link className="mt-3 block text-sm text-muted-foreground" to="/auth">
-                Sign in or register
-              </Link>
+              <>
+                <Link className="mt-3 block text-sm text-muted-foreground" to="/auth">
+                  Sign in
+                </Link>
+                <Link
+                  className="mt-3 block text-sm text-muted-foreground"
+                  to="/auth"
+                  search={{ mode: "signup" }}
+                >
+                  Register
+                </Link>
+              </>
             )}
           </div>
         </div>

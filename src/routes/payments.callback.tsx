@@ -19,7 +19,7 @@ function PaymentCallbackPage() {
   const { user, loading: authLoading } = useAuthUser();
   const verify = useServerFn(verifyPaystarkTopup);
   const [status, setStatus] = useState<"checking" | "success" | "pending" | "failed">("checking");
-  const [message, setMessage] = useState("Checking payment with PayStark…");
+  const [message, setMessage] = useState("Checking payment with Paystack…");
 
   useEffect(() => {
     if (authLoading || !user || !reference) return;

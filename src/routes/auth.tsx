@@ -7,13 +7,18 @@ import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { pageHead } from "@/lib/metadata";
+import { z } from "zod";
 import "@lovable.dev/cloud-auth-js/styles.css";
 export const Route = createFileRoute("/auth")({
+  validateSearch: z.object({ mode: z.enum(["signin", "signup"]).optional() }),
   head: () => pageHead("Your account", "Sign in or create your BESTPLUG MARKETPLACE account."),
   component: AuthPage,
 });
 function AuthPage() {
-  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
+  const { mode: requestedMode } = Route.useSearch();
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">(
+    requestedMode === "signup" ? "signup" : "signin",
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -21,6 +26,9 @@ function AuthPage() {
   const [message, setMessage] = useState("");
   const { user, role, roleLoading } = useAuthUser();
   const navigate = useNavigate();
+  useEffect(() => {
+    setMode(requestedMode === "signup" ? "signup" : "signin");
+  }, [requestedMode]);
   useEffect(() => {
     if (user && !roleLoading) void navigate({ to: role === "admin" ? "/admin" : "/" });
   }, [user, role, roleLoading, navigate]);

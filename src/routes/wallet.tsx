@@ -149,7 +149,7 @@ function WalletPage() {
                     />
                   </label>
                   <Button type="submit" disabled={paymentBusy || Boolean(pendingPayment)}>
-                    {paymentBusy ? "Starting…" : "Continue to PayStark"}
+                    {paymentBusy ? "Starting…" : "Continue to Paystack"}
                   </Button>
                 </form>
               </div>

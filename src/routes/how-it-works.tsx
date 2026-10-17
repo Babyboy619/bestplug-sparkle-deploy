@@ -50,8 +50,8 @@ function HowItWorksPage() {
           ))}
         </ol>
         <p className="mt-5 text-sm leading-6 text-muted-foreground">
-          Wallet funding is temporarily unavailable while PayStark integration details are pending.
-          Existing balances and purchases are unaffected.
+          Fund your wallet through Paystack. Payments are checked with the provider before your
+          balance is updated.
         </p>
         <Button asChild className="mt-5">
           <Link to="/products">

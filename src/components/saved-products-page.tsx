@@ -100,7 +100,7 @@ export function SavedProductsPage({ mode }: { mode: Mode }) {
             </h2>
             <Button asChild className="mt-5">
               <Link to="/products">
-                Browse Products <ArrowRight />
+                {isWishlist ? "Browse Products" : "Buy Account"} <ArrowRight />
               </Link>
             </Button>
           </div>

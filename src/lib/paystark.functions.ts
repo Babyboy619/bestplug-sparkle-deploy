@@ -23,7 +23,7 @@ function toMinorUnits(amount: number) {
 
 export const startPaystarkTopup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => topupAmountSchema.parse(input))
+  .validator((input) => topupAmountSchema.parse(input))
   .handler(async ({ data, context }) => {
     const config = getPaystarkConfig();
     const emailClaim = context.claims.email;
@@ -79,13 +79,13 @@ export const startPaystarkTopup = createServerFn({ method: "POST" })
         .eq("status", "pending");
       throw error instanceof Error
         ? error
-        : new Error("PayStark could not start this payment. Please try again.");
+        : new Error("Paystack could not start this payment. Please try again.");
     }
   });
 
 export const verifyPaystarkTopup = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => referenceSchema.parse(input))
+  .validator((input) => referenceSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { data: intent, error: intentError } = await context.supabase
       .from("payment_intents")
@@ -107,39 +107,55 @@ export const verifyPaystarkTopup = createServerFn({ method: "POST" })
       toMinorUnits(Number(intent.amount)),
     );
     if (!checked.confirmed) {
-      if (
-        checked.amountMinor !== null &&
-        checked.amountMinor !== toMinorUnits(Number(intent.amount))
-      ) {
+      if (checked.pending) {
         return {
-          status: "failed",
+          status: "pending",
           amount: Number(intent.amount),
-          error: "Payment amount did not match.",
+          error: "Payment is still pending confirmation.",
         };
       }
-      if (!checked.pending) {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        await supabaseAdmin
+
+      const mismatchError =
+        checked.amountMinor !== null && checked.amountMinor !== toMinorUnits(Number(intent.amount))
+          ? "Payment amount did not match."
+          : checked.currency !== null && checked.currency !== "NGN"
+            ? "Payment currency did not match."
+            : "Payment was not confirmed.";
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: failedIntent, error } = await supabaseAdmin
+        .from("payment_intents")
+        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .eq("reference", intent.reference)
+        .eq("user_id", context.userId)
+        .eq("provider", "paystark")
+        .eq("status", "pending")
+        .select("status")
+        .maybeSingle();
+      if (error) throw new Error("Payment status could not be updated. Please check again.");
+      if (!failedIntent) {
+        const { data: latestIntent, error: latestError } = await supabaseAdmin
           .from("payment_intents")
-          .update({ status: "failed", updated_at: new Date().toISOString() })
+          .select("status")
           .eq("reference", intent.reference)
           .eq("user_id", context.userId)
           .eq("provider", "paystark")
-          .eq("status", "pending");
-      }
-      if (checked.currency !== null && checked.currency !== "NGN") {
-        return {
-          status: "failed",
-          amount: Number(intent.amount),
-          error: "Payment currency did not match.",
-        };
+          .maybeSingle();
+        if (latestError || !latestIntent) {
+          throw new Error("Payment status could not be updated. Please check again.");
+        }
+        if (latestIntent.status === "success") {
+          return {
+            status: "success",
+            amount: Number(intent.amount),
+            alreadyCredited: true,
+          };
+        }
+        return { status: latestIntent.status, amount: Number(intent.amount) };
       }
       return {
-        status: checked.pending ? "pending" : "failed",
+        status: "failed",
         amount: Number(intent.amount),
-        error: checked.pending
-          ? "Payment is still pending confirmation."
-          : "Payment was not confirmed.",
+        error: mismatchError,
       };
     }
 
