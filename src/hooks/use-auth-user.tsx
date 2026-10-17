@@ -46,9 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queueMicrotask(() => {
         void (async () => {
           try {
-            const { data, error } = await supabase.rpc("has_role", {
+            const { data, error } = await supabase.rpc("is_active_admin", {
               _user_id: nextUser.id,
-              _role: "admin",
             });
             if (!active || request !== roleRequest) return;
             if (error) {

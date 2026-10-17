@@ -17,16 +17,6 @@ import { Input } from "@/components/ui/input";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { supabase } from "@/integrations/supabase/client";
 
-const platforms = [
-  ["TikTok", "tiktok", "Tk"],
-  ["Instagram", "instagram", "Ig"],
-  ["Facebook", "facebook", "f"],
-  ["YouTube", "youtube", "▶"],
-  ["Telegram", "telegram", "↗"],
-  ["Twitter / X", "twitter-x", "𝕏"],
-  ["LinkedIn", "linkedin", "in"],
-] as const;
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -56,6 +46,32 @@ function HomePage() {
   const [balanceError, setBalanceError] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [categories, setCategories] = useState<
+    { id: string; name: string; slug: string; image_url: string | null }[]
+  >([]);
+  const [categoriesUnavailable, setCategoriesUnavailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void supabase
+      .from("product_categories")
+      .select("id,name,slug,image_url")
+      .order("display_order")
+      .order("name")
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error("Marketplace categories could not be loaded:", error);
+          setCategoriesUnavailable(true);
+        } else {
+          setCategories(data ?? []);
+          setCategoriesUnavailable(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -214,26 +230,41 @@ function HomePage() {
               </Button>
             </div>
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-              {platforms.map(([name, slug, symbol]) => (
+              {categories.map((category) => (
                 <Link
                   className="platform-tile"
-                  key={slug}
+                  key={category.id}
                   to="/products"
-                  search={{ category: slug, q: "" }}
+                  search={{ category: category.slug, q: "" }}
                 >
                   <div>
-                    <span
-                      className="brand-title block text-2xl font-bold text-primary"
-                      aria-hidden="true"
-                    >
-                      {symbol}
-                    </span>
-                    <span className="mt-2 block text-xs font-medium">{name}</span>
+                    {category.image_url ? (
+                      <img
+                        className="size-9 rounded object-cover"
+                        src={category.image_url}
+                        alt=""
+                      />
+                    ) : (
+                      <span
+                        className="brand-title block text-2xl font-bold text-primary"
+                        aria-hidden="true"
+                      >
+                        {category.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="mt-2 block text-xs font-medium">{category.name}</span>
                   </div>
                   <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
                 </Link>
               ))}
             </div>
+            {!categories.length && (
+              <p className="mt-5 text-sm text-muted-foreground">
+                {categoriesUnavailable
+                  ? "Categories could not be loaded right now."
+                  : "No marketplace categories are active yet."}
+              </p>
+            )}
           </div>
         </section>
 

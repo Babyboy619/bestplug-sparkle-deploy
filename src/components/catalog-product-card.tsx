@@ -10,7 +10,15 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Product = Pick<
   Database["public"]["Tables"]["products"]["Row"],
-  "id" | "title" | "slug" | "description" | "price" | "currency" | "stock" | "image_url"
+  | "id"
+  | "title"
+  | "slug"
+  | "description"
+  | "price"
+  | "currency"
+  | "stock"
+  | "image_url"
+  | "product_status"
 >;
 
 export function CatalogProductCard({
@@ -133,7 +141,11 @@ export function CatalogProductCard({
               }).format(Number(product.price))}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {product.stock > 0 ? `${product.stock} available` : "Out of stock"}
+              {product.product_status !== "published"
+                ? "Unavailable"
+                : product.stock > 0
+                  ? `${product.stock} available`
+                  : "Out of stock"}
             </p>
           </div>
           <Button
@@ -141,7 +153,7 @@ export function CatalogProductCard({
             size="icon"
             variant="outline"
             aria-label={`Add ${product.title} to cart`}
-            disabled={busy || product.stock < 1}
+            disabled={busy || product.stock < 1 || product.product_status !== "published"}
             onClick={() => void addToCart()}
           >
             <ShoppingCart aria-hidden="true" />

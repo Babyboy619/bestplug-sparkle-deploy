@@ -50,6 +50,7 @@ function Details() {
       .select("*")
       .eq("slug", slug)
       .eq("published", true)
+      .is("archived_at", null)
       .maybeSingle()
       .then(({ data, error }) => {
         if (!active) return;
@@ -107,13 +108,43 @@ function Details() {
                 }).format(Number(product.price))}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                {product.stock > 0 ? `${product.stock} available` : "Out of stock"}
+                {product.product_status !== "published"
+                  ? "Unavailable"
+                  : product.stock > 0
+                    ? `${product.stock} available`
+                    : "Out of stock"}
               </p>
+              {product.metadata &&
+                typeof product.metadata === "object" &&
+                !Array.isArray(product.metadata) &&
+                product.metadata["specifications"] &&
+                typeof product.metadata["specifications"] === "object" &&
+                !Array.isArray(product.metadata["specifications"]) && (
+                  <dl className="mt-5 grid gap-2 border-t border-border pt-4 text-sm sm:grid-cols-2">
+                    {Object.entries(product.metadata["specifications"]).map(([label, value]) =>
+                      typeof value === "string" ? (
+                        <div key={label}>
+                          <dt className="text-xs text-muted-foreground">{label}</dt>
+                          <dd>{value}</dd>
+                        </div>
+                      ) : null,
+                    )}
+                  </dl>
+                )}
+              {product.metadata &&
+                typeof product.metadata === "object" &&
+                !Array.isArray(product.metadata) &&
+                typeof product.metadata["delivery_instructions"] === "string" &&
+                product.metadata["delivery_instructions"] && (
+                  <p className="mt-4 whitespace-pre-wrap rounded-md border border-border p-3 text-sm">
+                    {product.metadata["delivery_instructions"]}
+                  </p>
+                )}
               <Button
                 type="button"
                 variant="outline"
                 className="mt-5"
-                disabled={cartBusy || product.stock === 0}
+                disabled={cartBusy || product.stock === 0 || product.product_status !== "published"}
                 onClick={async () => {
                   if (!user) {
                     await navigate({ to: "/auth" });
@@ -158,7 +189,15 @@ function Details() {
                       onChange={(e) => setQuantity(e.target.value)}
                     />
                   </label>
-                  <Button type="submit" disabled={busy || product.stock === 0 || success}>
+                  <Button
+                    type="submit"
+                    disabled={
+                      busy ||
+                      product.stock === 0 ||
+                      product.product_status !== "published" ||
+                      success
+                    }
+                  >
                     {success ? "Purchase complete" : "Review purchase"}
                   </Button>
                 </form>
@@ -209,7 +248,12 @@ function Details() {
                     </Button>
                     <Button
                       type="button"
-                      disabled={busy || product.stock === 0 || success}
+                      disabled={
+                        busy ||
+                        product.stock === 0 ||
+                        product.product_status !== "published" ||
+                        success
+                      }
                       onClick={async () => {
                         setBusy(true);
                         setMessage("");

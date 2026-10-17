@@ -26,7 +26,15 @@ import { useAuthUser } from "@/hooks/use-auth-user";
 import { supabase } from "@/integrations/supabase/client";
 
 type MenuItem = {
-  to: "/" | "/how-it-works" | "/products" | "/wallet" | "/account-settings" | "/contact" | "/admin";
+  to:
+    | "/"
+    | "/how-it-works"
+    | "/products"
+    | "/wallet"
+    | "/account-settings"
+    | "/contact"
+    | "/admin"
+    | "/notifications";
   hash?: "#orders" | "#transactions";
   label: string;
   icon: LucideIcon;
@@ -49,6 +57,7 @@ const menuSections: { title: string; items: MenuItem[] }[] = [
     items: [
       { to: "/wallet", hash: "#orders", label: "My Orders", icon: Box },
       { to: "/wallet", hash: "#transactions", label: "Transaction History", icon: ReceiptText },
+      { to: "/notifications", label: "Notifications", icon: Bell },
     ],
   },
   {
@@ -78,6 +87,7 @@ export function SiteFrame({ children }: { children: ReactNode }) {
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [unreadNotifications, setUnreadNotifications] = useState<number | null>(null);
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem("bestplug-theme");
@@ -94,6 +104,33 @@ export function SiteFrame({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadNotifications(0);
+      return;
+    }
+    let active = true;
+    const refreshUnread = () => {
+      void supabase.rpc("count_unread_notifications").then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error("Unread notification count could not be loaded:", error);
+          setUnreadNotifications(null);
+        } else {
+          setUnreadNotifications(Number(data ?? 0));
+        }
+      });
+    };
+    refreshUnread();
+    const timer = window.setInterval(refreshUnread, 60000);
+    window.addEventListener("bestplug-notification-read", refreshUnread);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("bestplug-notification-read", refreshUnread);
+    };
+  }, [user]);
 
   function toggleTheme() {
     const nextDark = !isDark;
@@ -165,13 +202,21 @@ export function SiteFrame({ children }: { children: ReactNode }) {
             >
               {isDark ? <Sun /> : <Moon />}
             </Button>
-            <Button variant="ghost" size="icon" className="size-9" asChild>
+            <Button variant="ghost" size="icon" className="relative size-9" asChild>
               <Link
-                to="/wallet"
-                hash="#transactions"
-                aria-label="Notifications and transaction history"
+                to="/notifications"
+                aria-label={
+                  unreadNotifications === null
+                    ? "Notifications"
+                    : `${unreadNotifications} unread notifications`
+                }
               >
                 <Bell />
+                {unreadNotifications !== null && unreadNotifications > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-primary px-1 text-[10px] leading-4 text-primary-foreground">
+                    {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                  </span>
+                )}
               </Link>
             </Button>
           </div>

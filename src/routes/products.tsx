@@ -18,6 +18,7 @@ type Product = {
   currency: string;
   stock: number;
   image_url: string | null;
+  product_status: "draft" | "published" | "unavailable";
 };
 
 export const Route = createFileRoute("/products")({
@@ -56,10 +57,16 @@ function ProductListingPage() {
   useEffect(() => {
     let active = true;
     void Promise.all([
-      supabase.from("product_categories").select("id,name,slug").order("name"),
+      supabase
+        .from("product_categories")
+        .select("id,name,slug,image_url,description,display_order")
+        .order("display_order")
+        .order("name"),
       supabase
         .from("products")
-        .select("id,category_id,title,slug,description,price,currency,stock,image_url")
+        .select(
+          "id,category_id,title,slug,description,price,currency,stock,image_url,product_status",
+        )
         .eq("published", true)
         .order("created_at", { ascending: false }),
     ]).then(([categoryResult, productResult]) => {

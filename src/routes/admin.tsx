@@ -2,61 +2,71 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { ShieldCheck } from "lucide-react";
+import { AdminCategories } from "@/components/admin-categories";
+import { AdminNotifications } from "@/components/admin-notifications";
+import { AdminProducts } from "@/components/admin-products";
+import { AdminAuditLogs, AdminWalletTransactions } from "@/components/admin-records";
+import { AdminUsers } from "@/components/admin-users";
 import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
 import { useAuthUser } from "@/hooks/use-auth-user";
-import { adminData } from "@/lib/account.functions";
+import { adminDashboardOverview } from "@/lib/admin.functions";
 import { pageHead } from "@/lib/metadata";
 
-type AdminData = Awaited<ReturnType<typeof adminData>>;
+type Overview = Awaited<ReturnType<typeof adminDashboardOverview>>;
+type AdminSection =
+  "overview" | "users" | "products" | "categories" | "notifications" | "transactions" | "audit";
+
+const sections: { id: AdminSection; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "users", label: "User Management" },
+  { id: "products", label: "Product Management" },
+  { id: "categories", label: "Category Management" },
+  { id: "notifications", label: "Notification Management" },
+  { id: "transactions", label: "Wallet Transactions" },
+  { id: "audit", label: "Audit Logs" },
+];
 
 export const Route = createFileRoute("/admin")({
-  head: () => pageHead("Admin Dashboard", "Manage marketplace products, orders, and customers."),
+  head: () => pageHead("Admin Dashboard", "Manage marketplace users, products, and orders."),
   component: AdminPage,
 });
 
 function AdminPage() {
   const { user, loading, isAdmin, roleLoading, roleError } = useAuthUser();
-  const loadAdminData = useServerFn(adminData);
-  const [dashboard, setDashboard] = useState<AdminData | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
+  const loadOverview = useServerFn(adminDashboardOverview);
+  const [section, setSection] = useState<AdminSection>("overview");
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [refreshIndex, setRefreshIndex] = useState(0);
 
   useEffect(() => {
-    if (loading || roleLoading) return;
-    if (!user || !isAdmin) {
-      setDashboard(null);
-      setDataLoading(false);
-      return;
-    }
-
+    if (loading || roleLoading || !user || !isAdmin || section !== "overview") return;
     let active = true;
     setDataLoading(true);
     setDataError(null);
-    void loadAdminData()
+    void loadOverview()
       .then((result) => {
-        if (active) setDashboard(result);
+        if (active) setOverview(result);
       })
-      .catch((error: unknown) => {
+      .catch((cause: unknown) => {
         if (!active) return;
         setDataError(
-          error instanceof Error
-            ? error.message
-            : "Administrator dashboard data could not be loaded.",
+          cause instanceof Error ? cause.message : "Dashboard statistics could not be loaded.",
         );
       })
       .finally(() => {
         if (active) setDataLoading(false);
       });
-
     return () => {
       active = false;
     };
-  }, [user, loading, isAdmin, roleLoading, loadAdminData]);
+  }, [user, loading, isAdmin, roleLoading, section, refreshIndex, loadOverview]);
 
   return (
     <SiteFrame>
-      <main className="mx-auto min-h-[65vh] max-w-7xl px-5 py-10 sm:px-8">
+      <main className="mx-auto min-h-[65vh] max-w-7xl px-4 py-8 sm:px-8 sm:py-10">
         <div className="flex items-center gap-3">
           <ShieldCheck aria-hidden="true" className="size-8 text-primary" />
           <div>
@@ -65,7 +75,7 @@ function AdminPage() {
           </div>
         </div>
 
-        {loading || roleLoading || dataLoading ? (
+        {loading || roleLoading ? (
           <p className="mt-8 text-muted-foreground" role="status">
             Verifying administrator access…
           </p>
@@ -84,119 +94,130 @@ function AdminPage() {
           <p className="mt-8 rounded-lg border border-destructive p-4 text-sm" role="alert">
             This account is not authorized to access the Admin Dashboard.
           </p>
-        ) : dataError ? (
-          <p className="mt-8 rounded-lg border border-destructive p-4 text-sm" role="alert">
-            {dataError}
-          </p>
-        ) : dashboard ? (
-          <>
-            <section className="mt-7 grid gap-4 sm:grid-cols-3" aria-label="Marketplace totals">
-              {[
-                ["Products", dashboard.products.length],
-                ["Recent orders", dashboard.orders.length],
-                ["Recent customers", dashboard.profiles.length],
-              ].map(([label, count]) => (
-                <article key={label} className="rounded-lg border border-border p-5">
-                  <p className="text-sm text-muted-foreground">{label}</p>
-                  <p className="brand-title mt-2 text-3xl font-semibold text-primary">{count}</p>
-                </article>
-              ))}
-            </section>
-
-            <section className="mt-10">
-              <h2 className="text-xl font-semibold">Products</h2>
-              {dashboard.products.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">No products found.</p>
-              ) : (
-                <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="p-3 font-semibold">Product</th>
-                        <th className="p-3 font-semibold">Price</th>
-                        <th className="p-3 font-semibold">Stock</th>
-                        <th className="p-3 font-semibold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dashboard.products.map((product) => (
-                        <tr key={product.id} className="border-t border-border">
-                          <td className="p-3">{product.title}</td>
-                          <td className="p-3">₦{Number(product.price).toLocaleString("en-NG")}</td>
-                          <td className="p-3">{product.stock}</td>
-                          <td className="p-3">{product.published ? "Published" : "Draft"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section className="mt-10">
-              <h2 className="text-xl font-semibold">Recent orders</h2>
-              {dashboard.orders.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">No orders found.</p>
-              ) : (
-                <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="p-3 font-semibold">Order</th>
-                        <th className="p-3 font-semibold">Total</th>
-                        <th className="p-3 font-semibold">Status</th>
-                        <th className="p-3 font-semibold">Created</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dashboard.orders.map((order) => (
-                        <tr key={order.id} className="border-t border-border">
-                          <td className="p-3 font-mono text-xs">{order.id}</td>
-                          <td className="p-3">₦{Number(order.total).toLocaleString("en-NG")}</td>
-                          <td className="p-3">{order.status}</td>
-                          <td className="p-3">{new Date(order.created_at).toLocaleDateString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section className="mt-10">
-              <h2 className="text-xl font-semibold">Recent customers</h2>
-              {dashboard.profiles.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">No customer profiles found.</p>
-              ) : (
-                <div className="mt-4 overflow-x-auto rounded-lg border border-border">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="p-3 font-semibold">Name</th>
-                        <th className="p-3 font-semibold">Customer ID</th>
-                        <th className="p-3 font-semibold">Joined</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dashboard.profiles.map((profile) => (
-                        <tr key={profile.id} className="border-t border-border">
-                          <td className="p-3">{profile.display_name ?? "Marketplace customer"}</td>
-                          <td className="p-3 font-mono text-xs">{profile.id}</td>
-                          <td className="p-3">
-                            {new Date(profile.created_at).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-          </>
         ) : (
-          <p className="mt-8 text-muted-foreground" role="status">
-            Administrator dashboard data is not available.
-          </p>
+          <>
+            <nav
+              aria-label="Admin dashboard sections"
+              className="mt-7 flex gap-2 overflow-x-auto border-b border-border pb-3"
+            >
+              {sections.map(({ id, label }) => (
+                <Button
+                  key={id}
+                  type="button"
+                  size="sm"
+                  variant={section === id ? "default" : "outline"}
+                  aria-current={section === id ? "page" : undefined}
+                  onClick={() => setSection(id)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </nav>
+
+            {section === "overview" ? (
+              <section aria-labelledby="admin-overview-heading" className="mt-7">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 id="admin-overview-heading" className="text-2xl font-semibold">
+                      Overview
+                    </h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Live totals from marketplace records.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={dataLoading}
+                    onClick={() => setRefreshIndex((value) => value + 1)}
+                  >
+                    {dataLoading ? "Refreshing…" : "Refresh overview"}
+                  </Button>
+                </div>
+                {dataError ? (
+                  <p className="mt-5 rounded-md border border-destructive p-3 text-sm" role="alert">
+                    {dataError}
+                  </p>
+                ) : dataLoading ? (
+                  <p className="mt-6 text-sm text-muted-foreground" role="status">
+                    Loading dashboard statistics…
+                  </p>
+                ) : overview ? (
+                  <>
+                    <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      {[
+                        ["Registered users", overview.users],
+                        ["Active users", overview.activeUsers],
+                        ["Suspended users", overview.suspendedUsers],
+                        ["Total products", overview.products],
+                        ["Published products", overview.publishedProducts],
+                        ["Active categories", overview.categories],
+                        ["Wallet transactions", overview.transactions],
+                        ["Broadcast notifications", overview.broadcasts],
+                        ["Orders", overview.orders],
+                      ].map(([label, count]) => (
+                        <article key={label} className="rounded-lg border border-border p-5">
+                          <p className="text-sm text-muted-foreground">{label}</p>
+                          <p className="brand-title mt-2 text-3xl font-semibold text-primary">
+                            {Number(count).toLocaleString()}
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                    <section className="mt-9">
+                      <h3 className="text-xl font-semibold">Recent orders</h3>
+                      {overview.recentOrders.length ? (
+                        <div className="mt-4 overflow-x-auto rounded-lg border border-border">
+                          <table className="w-full min-w-[520px] text-left text-sm">
+                            <thead className="bg-muted/50">
+                              <tr>
+                                <th className="p-3 font-semibold">Order</th>
+                                <th className="p-3 font-semibold">Total</th>
+                                <th className="p-3 font-semibold">Status</th>
+                                <th className="p-3 font-semibold">Created</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {overview.recentOrders.map((order) => (
+                                <tr key={order.id} className="border-t border-border">
+                                  <td className="p-3 font-mono text-xs">{order.id}</td>
+                                  <td className="p-3">
+                                    ₦{Number(order.total).toLocaleString("en-NG")}
+                                  </td>
+                                  <td className="p-3">{order.status}</td>
+                                  <td className="p-3">
+                                    {new Date(order.created_at).toLocaleDateString()}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm text-muted-foreground">No orders yet.</p>
+                      )}
+                    </section>
+                  </>
+                ) : (
+                  <p className="mt-6 text-sm text-muted-foreground" role="status">
+                    Dashboard statistics are not available.
+                  </p>
+                )}
+              </section>
+            ) : section === "users" ? (
+              <AdminUsers />
+            ) : section === "products" ? (
+              <AdminProducts />
+            ) : section === "categories" ? (
+              <AdminCategories />
+            ) : section === "notifications" ? (
+              <AdminNotifications />
+            ) : section === "transactions" ? (
+              <AdminWalletTransactions />
+            ) : (
+              <AdminAuditLogs />
+            )}
+          </>
         )}
       </main>
     </SiteFrame>

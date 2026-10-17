@@ -29,6 +29,20 @@
       "when": 1792245383875,
       "tag": "0003_authorize_marketplace_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792246937710,
+      "tag": "0004_admin_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792246937711,
+      "tag": "0005_admin_categories_notifications",
+      "breakpoints": true
     }
   ]
 }

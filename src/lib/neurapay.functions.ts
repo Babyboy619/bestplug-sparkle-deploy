@@ -1,9 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireActiveAccount } from "@/lib/active-account.middleware";
 import { topupAmountSchema } from "@/lib/payment-validation";
 import { z } from "zod";
 
-const referenceSchema = z.object({ reference: z.string().trim().min(8).max(80).regex(/^[A-Za-z0-9._-]+$/) });
+const referenceSchema = z.object({
+  reference: z
+    .string()
+    .trim()
+    .min(8)
+    .max(80)
+    .regex(/^[A-Za-z0-9._-]+$/),
+});
 
 function getConfig() {
   const secret = process.env["NEURAPAY_SECRET_KEY"];
@@ -14,7 +21,7 @@ function getConfig() {
 }
 
 export const startNeuraPayTopup = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .inputValidator((input) => topupAmountSchema.parse(input))
   .handler(async ({ data, context }) => {
     const config = getConfig();
@@ -58,14 +65,33 @@ export const startNeuraPayTopup = createServerFn({ method: "POST" })
     });
 
     const accountNumber = neurapay.findNeuraPayField(response.json, [
-      "accountNumber", "account_number", "virtualAccountNumber", "virtual_account_number", "accountNo", "account_no",
+      "accountNumber",
+      "account_number",
+      "virtualAccountNumber",
+      "virtual_account_number",
+      "accountNo",
+      "account_no",
     ]);
-    const bankName = neurapay.findNeuraPayField(response.json, ["bankName", "bank_name", "bank", "accountBank"]);
+    const bankName = neurapay.findNeuraPayField(response.json, [
+      "bankName",
+      "bank_name",
+      "bank",
+      "accountBank",
+    ]);
     const accountName = neurapay.findNeuraPayField(response.json, ["accountName", "account_name"]);
     const paymentUrl = neurapay.safeHttpsUrl(
-      neurapay.findNeuraPayField(response.json, ["paymentUrl", "payment_url", "checkoutUrl", "checkout_url", "authorization_url", "link", "url"]),
+      neurapay.findNeuraPayField(response.json, [
+        "paymentUrl",
+        "payment_url",
+        "checkoutUrl",
+        "checkout_url",
+        "authorization_url",
+        "link",
+        "url",
+      ]),
     );
-    const explicitFailure = response.json?.["success"] === false || response.json?.["status"] === "failed";
+    const explicitFailure =
+      response.json?.["success"] === false || response.json?.["status"] === "failed";
 
     if (!response.ok || explicitFailure || (!accountNumber && !paymentUrl)) {
       await supabaseAdmin
@@ -74,11 +100,17 @@ export const startNeuraPayTopup = createServerFn({ method: "POST" })
         .eq("reference", reference)
         .eq("user_id", context.userId);
       console.error("NeuraPay could not create a transfer account", { status: response.status });
-      throw new Error("NeuraPay could not create a transfer account just now. Please try again later.");
+      throw new Error(
+        "NeuraPay could not create a transfer account just now. Please try again later.",
+      );
     }
 
     const providerReference = neurapay.findNeuraPayField(response.json, [
-      "transactionId", "transaction_id", "transactionReference", "transaction_reference", "id",
+      "transactionId",
+      "transaction_id",
+      "transactionReference",
+      "transaction_reference",
+      "id",
     ]);
     await supabaseAdmin
       .from("payment_intents")
@@ -104,7 +136,7 @@ export const startNeuraPayTopup = createServerFn({ method: "POST" })
   });
 
 export const verifyNeuraPayTopup = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .inputValidator((input) => referenceSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -118,26 +150,50 @@ export const verifyNeuraPayTopup = createServerFn({ method: "POST" })
 
     if (intentError || !intent) throw new Error("This transfer reference could not be found.");
     if (intent.status === "success") {
-      return { success: true, status: "successful", amount: Number(intent.amount), alreadyCredited: true };
+      return {
+        success: true,
+        status: "successful",
+        amount: Number(intent.amount),
+        alreadyCredited: true,
+      };
     }
-    if (intent.status !== "pending") return { success: false, status: intent.status, error: "This transfer is no longer pending." };
+    if (intent.status !== "pending")
+      return {
+        success: false,
+        status: intent.status,
+        error: "This transfer is no longer pending.",
+      };
 
     const env = getConfig();
     const neurapay = await import("@/lib/neurapay.server");
-    const gateway = neurapay.makeNeuraPayConfig(env.secret, env.businessId, env.webhookSecret, env.baseUrl);
-    const checked = await neurapay.verifyNeuraPayTransaction(gateway, intent.reference, Number(intent.amount));
+    const gateway = neurapay.makeNeuraPayConfig(
+      env.secret,
+      env.businessId,
+      env.webhookSecret,
+      env.baseUrl,
+    );
+    const checked = await neurapay.verifyNeuraPayTransaction(
+      gateway,
+      intent.reference,
+      Number(intent.amount),
+    );
     if (!checked.confirmed) {
       if (checked.reason === "amount_mismatch" || checked.reason === "currency_mismatch") {
-        return { success: false, status: "failed", error: "The amount or currency did not match. Please contact support." };
+        return {
+          success: false,
+          status: "failed",
+          error: "The amount or currency did not match. Please contact support.",
+        };
       }
       return {
         success: false,
         status: checked.status,
-        error: checked.reason === "unavailable"
-          ? "NeuraPay has not confirmed the transfer yet. Please try again shortly."
-          : checked.reason === "not_paid"
-            ? "This transfer was not completed."
-            : "We have not received this transfer yet. Try again after your bank confirms it.",
+        error:
+          checked.reason === "unavailable"
+            ? "NeuraPay has not confirmed the transfer yet. Please try again shortly."
+            : checked.reason === "not_paid"
+              ? "This transfer was not completed."
+              : "We have not received this transfer yet. Try again after your bank confirms it.",
       };
     }
 
@@ -150,7 +206,10 @@ export const verifyNeuraPayTopup = createServerFn({ method: "POST" })
         _provider_data: JSON.parse(JSON.stringify(checked.payload)),
       },
     );
-    if (settlementError) throw new Error("The transfer was confirmed but the wallet update needs another check. Please retry shortly.");
+    if (settlementError)
+      throw new Error(
+        "The transfer was confirmed but the wallet update needs another check. Please retry shortly.",
+      );
     const outcome = settlement?.[0];
     return {
       success: true,

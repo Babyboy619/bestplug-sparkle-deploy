@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireActiveAccount } from "@/lib/active-account.middleware";
 import { z } from "zod";
 import { nameSchema, passwordSchema } from "./paystack-validation";
 const displayNameSchema = z.object({ displayName: nameSchema });
 const emailSchema = z.object({ email: z.string().trim().email().max(254) });
 export const accountData = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .handler(async ({ context }) => {
     await context.supabase.rpc("ensure_user_wallet");
     const [profile, role, wallet] = await Promise.all([
@@ -24,7 +24,7 @@ export const accountData = createServerFn({ method: "POST" })
     };
   });
 export const updateName = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .inputValidator((v) => z.object({ name: nameSchema }).parse(v))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
@@ -46,7 +46,7 @@ const passwordChangeSchema = z
   });
 
 export const saveProfileName = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .inputValidator((input) => displayNameSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
@@ -58,17 +58,17 @@ export const saveProfileName = createServerFn({ method: "POST" })
   });
 
 export const validateAccountEmail = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .inputValidator((input) => emailSchema.parse(input))
   .handler(({ data }) => ({ email: data.email.toLowerCase() }));
 
 export const validateAccountPassword = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .inputValidator((input) => passwordChangeSchema.parse(input))
   .handler(() => ({ valid: true }));
 
 export const updateEmail = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .inputValidator((v) =>
     z.object({ email: z.string().email().max(254), current: z.string().min(1) }).parse(v),
   )
@@ -93,7 +93,7 @@ export const updateEmail = createServerFn({ method: "POST" })
     return { success: true };
   });
 export const changePassword = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .inputValidator((v) => passwordSchema.parse(v))
   .handler(async ({ data, context }) => {
     const result = await context.supabase.auth.updateUser({
@@ -107,7 +107,7 @@ export const changePassword = createServerFn({ method: "POST" })
     return { success: true };
   });
 export const adminData = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .handler(async ({ context }) => {
     const { data: allowed, error } = await context.supabase.rpc("has_role", {
       _user_id: context.userId,
@@ -142,7 +142,7 @@ export const adminData = createServerFn({ method: "POST" })
     };
   });
 export const uploadPhoto = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .inputValidator((v) =>
     z
       .object({
@@ -179,7 +179,7 @@ export const uploadPhoto = createServerFn({ method: "POST" })
     return { success: true };
   });
 export const photoUrl = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .handler(async ({ context }) => {
     const { data } = await context.supabase
       .from("profiles")

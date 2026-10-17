@@ -27,3 +27,21 @@ npm run dev
 - TypeScript
 - React
 - Tailwind CSS
+
+## Database migrations
+
+Database changes are stored in `drizzle/migrations`. Configure
+`LOVABLE_DB_MIGRATION_URL` for the intended database, then apply pending
+migrations with:
+
+```sh
+npx drizzle-kit migrate
+```
+
+Review and back up the target database before applying migrations to production.
+
+The administrator category and notification features are added by
+`0005_admin_categories_notifications.sql`. Broadcasts are stored once and served
+from a persistent in-app feed with per-user read receipts; sending does not
+depend on an external email or push-notification provider. Category deletion is
+archival and requires reassignment when products are linked to that category.

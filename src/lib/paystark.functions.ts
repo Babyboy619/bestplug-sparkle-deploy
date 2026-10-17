@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { topupAmountSchema } from "@/lib/payment-validation";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireActiveAccount } from "@/lib/active-account.middleware";
 import {
   getPaystarkConfig,
   initializePaystarkTransaction,
@@ -22,7 +22,7 @@ function toMinorUnits(amount: number) {
 }
 
 export const startPaystarkTopup = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .validator((input) => topupAmountSchema.parse(input))
   .handler(async ({ data, context }) => {
     const config = getPaystarkConfig();
@@ -84,7 +84,7 @@ export const startPaystarkTopup = createServerFn({ method: "POST" })
   });
 
 export const verifyPaystarkTopup = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireActiveAccount])
   .validator((input) => referenceSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { data: intent, error: intentError } = await context.supabase
