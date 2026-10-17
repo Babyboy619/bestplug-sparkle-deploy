@@ -19,22 +19,8 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1792146000000,
-      "tag": "0002_add_paystark_provider",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1792146001000,
-      "tag": "0003_settle_paystark_wallet",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1792146002000,
-      "tag": "0004_shopping_and_profile_features",
+      "when": 1792232242854,
+      "tag": "0002_shopping_and_paystack",
       "breakpoints": true
     }
   ]
