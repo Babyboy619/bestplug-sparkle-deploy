@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteFrame } from "@/components/site-frame";
@@ -264,3 +265,17 @@ function Details() {
     </SiteFrame>
   );
 }
+=======
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
+import { SiteFrame } from '@/components/site-frame';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useAuthUser } from '@/hooks/use-auth-user';
+import { supabase } from '@/integrations/supabase/client';
+import { pageHead } from '@/lib/metadata';
+import type { Database } from '@/integrations/supabase/types';
+type Product=Database['public']['Tables']['products']['Row'];
+export const Route=createFileRoute('/products/$slug')({head:()=>pageHead('Account details','View account details, stock and wallet checkout at BESTPLUG MARKETPLACE.'),component:Details});
+function Details(){const {slug}=Route.useParams();const {user}=useAuthUser();const [product,setProduct]=useState<Product|null>(null);const [loading,setLoading]=useState(true);const [quantity,setQuantity]=useState('1');const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');const [success,setSuccess]=useState(false);useEffect(()=>{void supabase.from('products').select('*').eq('slug',slug).eq('published',true).maybeSingle().then(({data,error})=>{setProduct(data);setLoading(false);if(error)setMessage(error.message);});},[slug]);return <SiteFrame><main className="mx-auto min-h-[65vh] max-w-4xl px-5 py-10"><Link className="text-sm text-primary" to="/products">← Marketplace</Link>{loading?<p className="mt-8">Loading account…</p>:!product?<div className="py-12"><h1 className="section-heading">Account unavailable</h1><p className="mt-3 text-muted-foreground">This listing is not available.</p></div>:<div className="mt-8 grid gap-8 sm:grid-cols-2">{product.image_url&&<img className="aspect-square w-full object-cover" src={product.image_url} alt={product.title}/>}<div><p className="text-xs uppercase text-primary">BESTPLUG MARKETPLACE</p><h1 className="section-heading mt-3">{product.title}</h1><p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-muted-foreground">{product.description}</p><p className="brand-title mt-6 text-3xl text-primary">{new Intl.NumberFormat('en-NG',{style:'currency',currency:product.currency}).format(Number(product.price))}</p><p className="mt-2 text-xs text-muted-foreground">{product.stock>0?`${product.stock} available`:'Out of stock'}</p>{user?<form className="mt-6 space-y-3" onSubmit={async e=>{e.preventDefault();setBusy(true);setMessage('');const wallet=await supabase.rpc('ensure_user_wallet');if(wallet.error){setMessage(wallet.error.message);setBusy(false);return;}const {error}=await supabase.rpc('purchase_with_wallet',{_product_id:product.id,_quantity:Number(quantity)});setBusy(false);setMessage(error?.message??'Purchase complete. Your account details are in Wallet & orders.');if(!error){setSuccess(true);setProduct({...product,stock:product.stock-Number(quantity)});}}}><label className="block text-sm">Quantity<Input className="mt-2 w-24" type="number" min="1" max={Math.min(20,product.stock)} value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><Button disabled={busy||product.stock===0}>{busy?'Processing…':'Buy with wallet'}</Button></form>:<Button asChild className="mt-6"><Link to="/auth">Sign in to purchase</Link></Button>}{success&&<Button asChild variant="outline" className="mt-3"><Link to="/wallet">View delivered details</Link></Button>}</div></div>}{message&&<p role="status" className="mt-5 text-sm text-primary">{message}</p>}</main></SiteFrame>;}
+>>>>>>> a5c80194e6a3b89bef51c0a3a9726f1e0dd469b0
