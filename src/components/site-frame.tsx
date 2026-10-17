@@ -1,12 +1,9 @@
-<<<<<<< HEAD
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ArrowUpRight,
   Bell,
   BookOpen,
   Box,
-  Clock3,
-  Heart,
   Home,
   LogOut,
   Menu,
@@ -16,8 +13,6 @@ import {
   ReceiptText,
   Settings,
   ShoppingBag,
-  ShoppingCart,
-  ShieldCheck,
   Sun,
   Wallet,
   X,
@@ -30,16 +25,7 @@ import { useAuthUser } from "@/hooks/use-auth-user";
 import { supabase } from "@/integrations/supabase/client";
 
 type MenuItem = {
-  to:
-    | "/"
-    | "/how-it-works"
-    | "/products"
-    | "/cart"
-    | "/wishlist"
-    | "/recently-viewed"
-    | "/wallet"
-    | "/account-settings"
-    | "/contact";
+  to: "/" | "/how-it-works" | "/products" | "/wallet" | "/account-settings" | "/contact";
   hash?: "#orders" | "#transactions";
   label: string;
   icon: LucideIcon;
@@ -55,12 +41,7 @@ const menuSections: { title: string; items: MenuItem[] }[] = [
   },
   {
     title: "Shopping",
-    items: [
-      { to: "/products", label: "Buy Account", icon: ShoppingBag },
-      { to: "/cart", label: "Cart", icon: ShoppingCart },
-      { to: "/wishlist", label: "Wishlist", icon: Heart },
-      { to: "/recently-viewed", label: "Recently Viewed", icon: Clock3 },
-    ],
+    items: [{ to: "/products", label: "Buy Account", icon: ShoppingBag }],
   },
   {
     title: "Activity",
@@ -86,18 +67,16 @@ const bottomItems = [
   { to: "/", label: "Home", icon: Home, exact: true },
   { to: "/products", label: "Buy Acc.", icon: ShoppingBag, exact: false },
   { to: "/wallet", label: "Fund", icon: Wallet, exact: false },
-  { to: "/cart", label: "Cart", icon: ShoppingCart, exact: true },
   { to: "/wallet", hash: "#orders", label: "Orders", icon: Package, exact: false },
 ] as const;
 
 export function SiteFrame({ children }: { children: ReactNode }) {
-  const { user, role, loading } = useAuthUser();
+  const { user, loading } = useAuthUser();
   const { pathname, hash } = useRouterState({
     select: (state) => ({ pathname: state.location.pathname, hash: state.location.hash }),
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
-  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem("bestplug-theme");
@@ -114,25 +93,6 @@ export function SiteFrame({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [menuOpen]);
-
-  useEffect(() => {
-    let active = true;
-    async function loadCartCount() {
-      if (!user) {
-        setCartCount(0);
-        return;
-      }
-      const { data } = await supabase.from("cart_items").select("quantity").eq("user_id", user.id);
-      if (active) setCartCount((data ?? []).reduce((sum, row) => sum + row.quantity, 0));
-    }
-    const update = () => void loadCartCount();
-    update();
-    window.addEventListener("bestplug-cart-updated", update);
-    return () => {
-      active = false;
-      window.removeEventListener("bestplug-cart-updated", update);
-    };
-  }, [user]);
 
   function toggleTheme() {
     const nextDark = !isDark;
@@ -205,18 +165,6 @@ export function SiteFrame({ children }: { children: ReactNode }) {
                 <Bell />
               </Link>
             </Button>
-            <Button variant="ghost" size="icon" className="size-9" asChild>
-              <Link to="/cart" aria-label="Shopping cart">
-                <span className="relative">
-                  <ShoppingCart />
-                  {cartCount > 0 && (
-                    <span className="absolute -right-2 -top-2 flex size-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
-                      {cartCount > 99 ? "99+" : cartCount}
-                    </span>
-                  )}
-                </span>
-              </Link>
-            </Button>
           </div>
         </div>
       </header>
@@ -271,21 +219,6 @@ export function SiteFrame({ children }: { children: ReactNode }) {
                   </div>
                 </section>
               ))}
-              {role === "admin" && (
-                <section>
-                  <h2 className="mb-2 px-3 text-[10px] font-bold uppercase text-slate-400">
-                    Administration
-                  </h2>
-                  <Link
-                    to="/admin"
-                    className="flex min-h-10 items-center gap-3 rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <ShieldCheck aria-hidden="true" className="size-[18px] text-orange-300" />
-                    Admin Dashboard
-                  </Link>
-                </section>
-              )}
             </nav>
           </aside>
         </div>
@@ -312,14 +245,7 @@ export function SiteFrame({ children }: { children: ReactNode }) {
               aria-current={isActive ? "page" : undefined}
               className={`lux-dock-item${isActive ? " lux-dock-active" : ""}`}
             >
-              <span className="relative">
-                <Icon aria-hidden="true" className="size-5" />
-                {label === "Cart" && cartCount > 0 && (
-                  <span className="absolute -right-2 -top-1 flex size-3.5 items-center justify-center rounded-full bg-orange-500 text-[8px] font-bold text-white">
-                    {cartCount > 9 ? "9+" : cartCount}
-                  </span>
-                )}
-              </span>
+              <Icon aria-hidden="true" className="size-5" />
               <span>{label}</span>
             </Link>
           );
@@ -363,11 +289,6 @@ export function SiteFrame({ children }: { children: ReactNode }) {
                 <Link className="mt-3 block text-sm text-muted-foreground" to="/wallet">
                   Wallet and orders
                 </Link>
-                {role === "admin" && (
-                  <Link className="mt-3 block text-sm text-muted-foreground" to="/admin">
-                    Admin Dashboard
-                  </Link>
-                )}
                 <Button
                   variant="link"
                   className="mt-3 h-auto p-0 text-sm text-muted-foreground"
@@ -399,32 +320,3 @@ export function SiteFrame({ children }: { children: ReactNode }) {
     </div>
   );
 }
-=======
-import { Link } from '@tanstack/react-router';
-import { ArrowUpRight, UserRound, Wallet, LogOut, ShieldCheck, Home, Store, Search } from 'lucide-react';
-import type { ReactNode } from 'react';
-import logo from '@/assets/bestplug-logo.jpg.asset.json';
-import { Button } from '@/components/ui/button';
-import { useAuthUser } from '@/hooks/use-auth-user';
-import { supabase } from '@/integrations/supabase/client';
-
-const navItems = [
- { to: '/', label: 'Home', icon: Home, exact: true },
- { to: '/products', label: 'Market', icon: Store, exact: false },
- { to: '/wallet', label: 'Wallet', icon: Wallet, exact: false },
-] as const;
-
-export function SiteFrame({ children }: { children: ReactNode }) {
- const { user } = useAuthUser();
- return <div className="site-shell min-h-screen bg-background text-foreground">
-  <header className="lux-header"><div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
-   <Link to="/" aria-label="BESTPLUG MARKETPLACE home" className="flex min-w-0 items-center gap-3"><img src={logo.url} alt="BestPlug logo" className="lux-logo"/><span className="brand-title text-sm font-bold leading-tight sm:text-base">BESTPLUG<span className="block text-[10px] font-semibold tracking-[0.2em] text-primary">MARKETPLACE</span></span></Link>
-   <nav className="lux-tabs hidden md:flex" aria-label="Main navigation">{navItems.map(item=><Link key={item.to} to={item.to} activeOptions={{exact:item.exact}} className="lux-tab" activeProps={{className:'lux-tab-active'}}>{item.label === 'Market' ? 'Marketplace' : item.label}</Link>)}</nav>
-   <div className="flex items-center gap-2"><Button variant="glass" size="icon" asChild><Link to="/products" search={{q:'',category:''}} aria-label="Search marketplace"><Search/></Link></Button>{user ? <Button variant="glass" size="icon" aria-label="Sign out" title="Sign out" onClick={()=>void supabase.auth.signOut()}><LogOut/></Button> : <Button variant="glass" size="icon" asChild><Link to="/auth" aria-label="Sign in"><UserRound/></Link></Button>}<Button asChild size="sm" variant="luxury" className="hidden sm:inline-flex"><Link to="/products">Shop now<ArrowUpRight/></Link></Button></div>
-  </div></header>
-  <nav aria-label="Mobile navigation" className="lux-dock md:hidden">{navItems.map(({to,label,icon:Icon,exact})=><Link key={to} to={to} activeOptions={{exact}} className="lux-dock-item" activeProps={{className:'lux-dock-active'}}><Icon className="size-5"/><span>{label}</span></Link>)}<Link to={user ? '/wallet' : '/auth'} className="lux-dock-item" activeProps={{className:'lux-dock-active'}}><UserRound className="size-5"/><span>{user ? 'Account' : 'Sign in'}</span></Link></nav>
-  {children}
-  <footer className="border-t border-border"><div className="mx-auto grid max-w-7xl gap-8 px-5 py-10 sm:grid-cols-3 sm:px-8"><div><p className="brand-title font-bold">BESTPLUG <span className="text-primary">MARKETPLACE</span></p><p className="mt-3 max-w-xs text-sm leading-6 text-muted-foreground">Your plug for social media accounts. Find your platform. Make your next move.</p></div><div><p className="text-sm font-semibold">Marketplace</p><Link className="mt-3 block text-sm text-muted-foreground" to="/products">Browse accounts</Link><Link className="mt-3 block text-sm text-muted-foreground" to="/wallet">Wallet & orders</Link></div><div><p className="text-sm font-semibold">Your account</p><Link className="mt-3 block text-sm text-muted-foreground" to="/auth">Sign in or register</Link><p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><ShieldCheck className="size-4 text-primary"/>Secure wallet checkout</p></div></div><div className="border-t border-border px-4 py-5 text-center text-xs text-muted-foreground">© 2026 BESTPLUG MARKETPLACE. All rights reserved.</div></footer>
- </div>;
-}
->>>>>>> a5c80194e6a3b89bef51c0a3a9726f1e0dd469b0

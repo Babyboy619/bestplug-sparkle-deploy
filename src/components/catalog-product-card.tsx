@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAuthUser } from "@/hooks/use-auth-user";
+import { addCartItem } from "@/lib/cart";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -31,7 +32,7 @@ export function CatalogProductCard({
       return;
     }
     void supabase
-      .from("wishlists")
+      .from("wishlist_items")
       .select("product_id")
       .eq("user_id", user.id)
       .eq("product_id", product.id)
@@ -53,11 +54,11 @@ export function CatalogProductCard({
     setBusy(true);
     const result = wishlisted
       ? await supabase
-          .from("wishlists")
+          .from("wishlist_items")
           .delete()
           .eq("user_id", user.id)
           .eq("product_id", product.id)
-      : await supabase.from("wishlists").insert({ user_id: user.id, product_id: product.id });
+      : await supabase.from("wishlist_items").insert({ user_id: user.id, product_id: product.id });
     setBusy(false);
     if (result.error) {
       toast.error("Your wishlist could not be updated. Please try again.");
@@ -74,21 +75,15 @@ export function CatalogProductCard({
       return;
     }
     setBusy(true);
-    const { error } = await supabase.rpc("add_cart_item", {
-      _product_id: product.id,
-      _quantity: 1,
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(
-        error.message.includes("unavailable")
-          ? "This product is out of stock."
-          : "The product could not be added to your cart.",
-      );
-      return;
+    try {
+      await addCartItem(user.id, product.id);
+      window.dispatchEvent(new Event("bestplug-cart-updated"));
+      toast.success("Added to cart.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The product could not be added.");
+    } finally {
+      setBusy(false);
     }
-    window.dispatchEvent(new Event("bestplug-cart-updated"));
-    toast.success("Added to cart.");
   }
 
   return (

@@ -30,7 +30,7 @@ export function SavedProductsPage({ mode }: { mode: Mode }) {
     setLoading(true);
     const savedRows = isWishlist
       ? await supabase
-          .from("wishlists")
+          .from("wishlist_items")
           .select("product_id,created_at")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false })

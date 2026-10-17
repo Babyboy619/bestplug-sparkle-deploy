@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -58,7 +57,7 @@ function WalletPage() {
     const { data: pending } = await supabase
       .from("payment_intents")
       .select("reference,amount,raw")
-      .eq("provider", "paystark")
+      .eq("provider", "paystack")
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(1)
@@ -224,8 +223,7 @@ function WalletPage() {
                   >
                     <div>
                       <p>
-                        {tx.description?.replace(/NeuraPay/gi, "payment provider") ??
-                          "Wallet transaction"}
+                        {tx.description?.replace(/PayStark/gi, "Paystack") ?? "Wallet transaction"}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {new Date(tx.created_at).toLocaleDateString()} · {tx.status}
@@ -267,26 +265,3 @@ function WalletPage() {
     </SiteFrame>
   );
 }
-=======
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
-import { useServerFn } from '@tanstack/react-start';
-import { Wallet, ArrowUpRight } from 'lucide-react';
-import { SiteFrame } from '@/components/site-frame';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { useAuthUser } from '@/hooks/use-auth-user';
-import { supabase } from '@/integrations/supabase/client';
-import { startNeuraPayTopup,verifyNeuraPayTopup } from '@/lib/neurapay.functions';
-import { pageHead } from '@/lib/metadata';
-import type { Database } from '@/integrations/supabase/types';
-type Tx=Database['public']['Tables']['wallet_transactions']['Row'];
-type Order=Database['public']['Tables']['order_items']['Row'];
-type Transfer=Awaited<ReturnType<typeof startNeuraPayTopup>>;
-export const Route=createFileRoute('/wallet')({head:()=>pageHead('Wallet & orders','Manage your BestPlug wallet, transaction history, and delivered purchases.'),component:WalletPage});
-function WalletPage(){const {user,loading}=useAuthUser();const [balance,setBalance]=useState(0);const [transactions,setTransactions]=useState<Tx[]>([]);const [orders,setOrders]=useState<Order[]>([]);const [amount,setAmount]=useState('1000');const [message,setMessage]=useState('');const [busy,setBusy]=useState(false);const [transfer,setTransfer]=useState<Transfer|null>(null);const start=useServerFn(startNeuraPayTopup);const verify=useServerFn(verifyNeuraPayTopup);
- async function refresh(){const wallet=await supabase.rpc('ensure_user_wallet');if(wallet.error){setMessage(wallet.error.message);return;}setBalance(Number(wallet.data?.[0]?.balance??0));const [tx,items]=await Promise.all([supabase.from('wallet_transactions').select('*').order('created_at',{ascending:false}).limit(30),supabase.from('order_items').select('*').order('created_at',{ascending:false}).limit(30)]);setTransactions(tx.data??[]);setOrders(items.data??[]);}
- useEffect(()=>{if(user)void refresh();},[user?.id]);
- return <SiteFrame><main className="mx-auto min-h-[65vh] max-w-7xl px-5 py-10 sm:px-8"><p className="text-xs uppercase text-primary">Your account</p><h1 className="section-heading mt-2">Wallet & orders</h1>{loading?<p className="mt-8 text-muted-foreground">Loading your account…</p>:!user?<div className="mt-8 border-y border-border py-10"><Wallet className="size-8 text-primary"/><h2 className="mt-4 text-xl font-semibold">Your wallet is waiting.</h2><p className="mt-2 text-sm text-muted-foreground">Sign in to see your balance and purchases.</p><Button asChild className="mt-5"><Link to="/auth">Sign in<ArrowUpRight/></Link></Button></div>:<><div className="mt-7 grid gap-8 border-y border-border py-7 md:grid-cols-2"><div><p className="text-sm text-muted-foreground">Available balance</p><p className="brand-title mt-3 text-4xl font-semibold text-primary">₦{balance.toLocaleString('en-NG',{minimumFractionDigits:2})}</p><p className="mt-3 text-xs text-muted-foreground">{user.email}</p></div><form onSubmit={async e=>{e.preventDefault();setBusy(true);setMessage('');try{setTransfer(await start({data:{amount:Number(amount)}}));}catch(e){setMessage(e instanceof Error?e.message:'Could not start transfer.');}finally{setBusy(false);}}}><label className="text-sm">Fund wallet (NGN)<Input className="mt-2" type="number" min="100" max="1000000" step="0.01" required value={amount} onChange={e=>setAmount(e.target.value)}/></label><Button className="mt-3" disabled={busy}>{busy?'Please wait…':'Continue with NeuraPay'}</Button></form></div>{message&&<p role="status" className="mt-4 text-sm text-primary">{message}</p>}{transfer&&<div className="mt-5 space-y-3 border border-border bg-card p-5"><p className="font-semibold">Transfer ₦{transfer.amount.toLocaleString()}</p>{transfer.accountNumber&&<p>{transfer.bankName} · {transfer.accountNumber}<br/>{transfer.accountName}</p>}<p className="text-sm text-muted-foreground">{transfer.instructions}</p>{transfer.paymentUrl&&<Button asChild><a href={transfer.paymentUrl} target="_blank" rel="noopener noreferrer">Open NeuraPay<ArrowUpRight/></a></Button>}<Button variant="outline" disabled={busy} onClick={async()=>{setBusy(true);try{const result=await verify({data:{reference:transfer.reference}});setMessage(result.success?'Payment confirmed. Your wallet is updated.':result.error??'Payment is pending.');if(result.success){setTransfer(null);await refresh();}}catch(e){setMessage(e instanceof Error?e.message:'Verification failed.');}finally{setBusy(false);}}}>Check payment</Button></div>}<section className="py-8"><h2 className="text-xl font-semibold">Transaction history</h2>{transactions.length===0?<p className="mt-4 text-sm text-muted-foreground">No transactions yet.</p>:transactions.map(tx=><div key={tx.id} className="mt-4 flex justify-between gap-3 border-b border-border pb-4 text-sm"><div><p>{tx.description}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()} · {tx.status}</p></div><p className="shrink-0 text-primary">{tx.type==='credit'?'+':'−'}₦{Number(tx.amount).toLocaleString()}</p></div>)}</section><section className="pb-8"><h2 className="text-xl font-semibold">Your purchases</h2>{orders.length===0?<p className="mt-4 text-sm text-muted-foreground">No purchases yet.</p>:orders.map(item=><article key={item.id} className="mt-4 border border-border p-4"><h3 className="font-semibold">{item.title}</h3><p className="mt-2 text-xs text-muted-foreground">Quantity: {item.quantity} · ₦{Number(item.unit_price).toLocaleString()}</p><details className="mt-3"><summary className="cursor-pointer text-sm text-primary">Delivered account details</summary><pre className="mt-3 whitespace-pre-wrap break-all text-sm">{item.delivered_payload??'Delivery pending'}</pre></details></article>)}</section></>}</main></SiteFrame>;
-}
->>>>>>> a5c80194e6a3b89bef51c0a3a9726f1e0dd469b0

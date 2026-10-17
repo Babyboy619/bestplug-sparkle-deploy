@@ -10,21 +10,42 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountSettingsRouteImport } from './routes/account-settings'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as WalletRouteImport } from './routes/wallet'
+import { Route as PaymentsCallbackRouteImport } from './routes/payments.callback'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as ApiPublicNeurapayWebhookRouteImport } from './routes/api/public/neurapay-webhook'
+import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack-webhook'
+import { Route as ApiPublicPaystarkWebhookRouteImport } from './routes/api/public/paystark-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountSettingsRoute = AccountSettingsRouteImport.update({
+  id: '/account-settings',
+  path: '/account-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsRoute = ProductsRouteImport.update({
@@ -42,6 +63,11 @@ const WalletRoute = WalletRouteImport.update({
   path: '/wallet',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PaymentsCallbackRoute = PaymentsCallbackRouteImport.update({
+  id: '/payments/callback',
+  path: '/payments/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsSlugRoute = ProductsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -53,72 +79,126 @@ const ApiPublicNeurapayWebhookRoute =
     path: '/api/public/neurapay-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaystackWebhookRoute =
+  ApiPublicPaystackWebhookRouteImport.update({
+    id: '/api/public/paystack-webhook',
+    path: '/api/public/paystack-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicPaystarkWebhookRoute =
+  ApiPublicPaystarkWebhookRouteImport.update({
+    id: '/api/public/paystark-webhook',
+    path: '/api/public/paystark-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account-settings': typeof AccountSettingsRoute
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/products': typeof ProductsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/wallet': typeof WalletRoute
+  '/payments/callback': typeof PaymentsCallbackRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
+  '/api/public/paystack-webhook': typeof ApiPublicPaystackWebhookRoute
+  '/api/public/paystark-webhook': typeof ApiPublicPaystarkWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account-settings': typeof AccountSettingsRoute
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/products': typeof ProductsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/wallet': typeof WalletRoute
+  '/payments/callback': typeof PaymentsCallbackRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
+  '/api/public/paystack-webhook': typeof ApiPublicPaystackWebhookRoute
+  '/api/public/paystark-webhook': typeof ApiPublicPaystarkWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account-settings': typeof AccountSettingsRoute
   '/auth': typeof AuthRoute
+  '/contact': typeof ContactRoute
+  '/how-it-works': typeof HowItWorksRoute
   '/products': typeof ProductsRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/wallet': typeof WalletRoute
+  '/payments/callback': typeof PaymentsCallbackRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
+  '/api/public/paystack-webhook': typeof ApiPublicPaystackWebhookRoute
+  '/api/public/paystark-webhook': typeof ApiPublicPaystarkWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account-settings'
     | '/auth'
+    | '/contact'
+    | '/how-it-works'
     | '/products'
     | '/reset-password'
     | '/wallet'
+    | '/payments/callback'
     | '/products/$slug'
     | '/api/public/neurapay-webhook'
+    | '/api/public/paystack-webhook'
+    | '/api/public/paystark-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account-settings'
     | '/auth'
+    | '/contact'
+    | '/how-it-works'
     | '/products'
     | '/reset-password'
     | '/wallet'
+    | '/payments/callback'
     | '/products/$slug'
     | '/api/public/neurapay-webhook'
+    | '/api/public/paystack-webhook'
+    | '/api/public/paystark-webhook'
   id:
     | '__root__'
     | '/'
+    | '/account-settings'
     | '/auth'
+    | '/contact'
+    | '/how-it-works'
     | '/products'
     | '/reset-password'
     | '/wallet'
+    | '/payments/callback'
     | '/products/$slug'
     | '/api/public/neurapay-webhook'
+    | '/api/public/paystack-webhook'
+    | '/api/public/paystark-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountSettingsRoute: typeof AccountSettingsRoute
   AuthRoute: typeof AuthRoute
+  ContactRoute: typeof ContactRoute
+  HowItWorksRoute: typeof HowItWorksRoute
   ProductsRoute: typeof ProductsRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   WalletRoute: typeof WalletRoute
+  PaymentsCallbackRoute: typeof PaymentsCallbackRoute
   ApiPublicNeurapayWebhookRoute: typeof ApiPublicNeurapayWebhookRoute
+  ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
+  ApiPublicPaystarkWebhookRoute: typeof ApiPublicPaystarkWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -130,11 +210,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account-settings': {
+      id: '/account-settings'
+      path: '/account-settings'
+      fullPath: '/account-settings'
+      preLoaderRoute: typeof AccountSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products': {
@@ -158,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalletRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/payments/callback': {
+      id: '/payments/callback'
+      path: '/payments/callback'
+      fullPath: '/payments/callback'
+      preLoaderRoute: typeof PaymentsCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products/$slug': {
       id: '/products/$slug'
       path: '/$slug'
@@ -170,6 +278,20 @@ declare module '@tanstack/react-router' {
       path: '/api/public/neurapay-webhook'
       fullPath: '/api/public/neurapay-webhook'
       preLoaderRoute: typeof ApiPublicNeurapayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/paystack-webhook': {
+      id: '/api/public/paystack-webhook'
+      path: '/api/public/paystack-webhook'
+      fullPath: '/api/public/paystack-webhook'
+      preLoaderRoute: typeof ApiPublicPaystackWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/paystark-webhook': {
+      id: '/api/public/paystark-webhook'
+      path: '/api/public/paystark-webhook'
+      fullPath: '/api/public/paystark-webhook'
+      preLoaderRoute: typeof ApiPublicPaystarkWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -189,11 +311,17 @@ const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountSettingsRoute: AccountSettingsRoute,
   AuthRoute: AuthRoute,
+  ContactRoute: ContactRoute,
+  HowItWorksRoute: HowItWorksRoute,
   ProductsRoute: ProductsRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   WalletRoute: WalletRoute,
+  PaymentsCallbackRoute: PaymentsCallbackRoute,
   ApiPublicNeurapayWebhookRoute: ApiPublicNeurapayWebhookRoute,
+  ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
+  ApiPublicPaystarkWebhookRoute: ApiPublicPaystarkWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

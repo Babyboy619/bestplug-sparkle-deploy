@@ -39,7 +39,7 @@ export const startPaystarkTopup = createServerFn({ method: "POST" })
     const reference = `ps-${crypto.randomUUID()}`;
     const { error: intentError } = await supabaseAdmin.from("payment_intents").insert({
       user_id: context.userId,
-      provider: "paystark",
+      provider: "paystack",
       reference,
       amount: data.amount,
       currency: "NGN",
@@ -89,10 +89,10 @@ export const verifyPaystarkTopup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: intent, error: intentError } = await context.supabase
       .from("payment_intents")
-      .select("reference,amount,status")
+      .select("reference,amount,status,currency")
       .eq("reference", data.reference)
       .eq("user_id", context.userId)
-      .eq("provider", "paystark")
+      .eq("provider", "paystack")
       .maybeSingle();
     if (intentError || !intent) throw new Error("This payment reference could not be found.");
     if (intent.status === "success") {
@@ -122,34 +122,28 @@ export const verifyPaystarkTopup = createServerFn({ method: "POST" })
             ? "Payment currency did not match."
             : "Payment was not confirmed.";
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: failedIntent, error } = await supabaseAdmin
+      const { error } = await supabaseAdmin.rpc("fail_paystack", {
+        _reference: intent.reference,
+      });
+      if (error) throw new Error("Payment status could not be updated. Please check again.");
+      const { data: latestIntent, error: latestError } = await supabaseAdmin
         .from("payment_intents")
-        .update({ status: "failed", updated_at: new Date().toISOString() })
+        .select("status")
         .eq("reference", intent.reference)
         .eq("user_id", context.userId)
-        .eq("provider", "paystark")
-        .eq("status", "pending")
-        .select("status")
+        .eq("provider", "paystack")
         .maybeSingle();
-      if (error) throw new Error("Payment status could not be updated. Please check again.");
-      if (!failedIntent) {
-        const { data: latestIntent, error: latestError } = await supabaseAdmin
-          .from("payment_intents")
-          .select("status")
-          .eq("reference", intent.reference)
-          .eq("user_id", context.userId)
-          .eq("provider", "paystark")
-          .maybeSingle();
-        if (latestError || !latestIntent) {
-          throw new Error("Payment status could not be updated. Please check again.");
-        }
-        if (latestIntent.status === "success") {
-          return {
-            status: "success",
-            amount: Number(intent.amount),
-            alreadyCredited: true,
-          };
-        }
+      if (latestError || !latestIntent) {
+        throw new Error("Payment status could not be updated. Please check again.");
+      }
+      if (latestIntent.status === "success") {
+        return {
+          status: "success",
+          amount: Number(intent.amount),
+          alreadyCredited: true,
+        };
+      }
+      if (latestIntent.status !== "failed") {
         return { status: latestIntent.status, amount: Number(intent.amount) };
       }
       return {
@@ -160,16 +154,19 @@ export const verifyPaystarkTopup = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: settlement, error } = await supabaseAdmin.rpc("settle_paystark_payment", {
+    if (!checked.providerReference) {
+      throw new Error("Paystack verification did not return a transaction ID.");
+    }
+    const { error } = await supabaseAdmin.rpc("settle_paystack", {
       _reference: intent.reference,
       _amount: Number(intent.amount),
-      ...(checked.providerReference ? { _provider_reference: checked.providerReference } : {}),
-      _provider_data: JSON.parse(JSON.stringify(checked.payload)),
+      _currency: intent.currency,
+      _provider_id: checked.providerReference,
     });
     if (error) throw new Error("Payment was confirmed but wallet settlement needs another check.");
     return {
       status: "success",
       amount: Number(intent.amount),
-      alreadyCredited: settlement?.[0]?.already_credited ?? false,
+      alreadyCredited: false,
     };
   });
