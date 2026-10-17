@@ -4,6 +4,7 @@ import { ArrowRight, Globe2, Search, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SiteFrame } from "@/components/site-frame";
+import { CatalogProductCard } from "@/components/catalog-product-card";
 import { supabase } from "@/integrations/supabase/client";
 
 type Category = { id: string; name: string; slug: string };
@@ -203,42 +204,7 @@ function ProductListingPage() {
         ) : matchingProducts.length > 0 ? (
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {matchingProducts.map((product) => (
-              <article key={product.id} className="flex flex-col border border-border bg-card">
-                {product.image_url && (
-                  <img
-                    src={product.image_url}
-                    alt=""
-                    className="aspect-[16/9] w-full object-cover"
-                  />
-                )}
-                <div className="flex flex-1 flex-col p-4">
-                  <h3 className="text-base font-semibold">{product.title}</h3>
-                  {product.description && (
-                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
-                      {product.description}
-                    </p>
-                  )}
-                  <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-                    <div>
-                      <p className="font-semibold">
-                        {new Intl.NumberFormat("en-NG", {
-                          style: "currency",
-                          currency: product.currency || "NGN",
-                          maximumFractionDigits: 0,
-                        }).format(product.price)}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {product.stock > 0 ? "Available" : "Out of stock"}
-                      </p>
-                    </div>
-                    <Button asChild size="sm" className="rounded-md">
-                      <Link to="/products/$slug" params={{ slug: product.slug }}>
-                        Details <ArrowRight className="size-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </article>
+              <CatalogProductCard key={product.id} product={product} />
             ))}
           </div>
         ) : (

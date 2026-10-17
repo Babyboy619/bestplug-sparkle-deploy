@@ -41,15 +41,22 @@ function DashboardPage() {
   const [balance, setBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceError, setBalanceError] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
 
   useEffect(() => {
     if (!user) {
       setBalance(null);
+      setDisplayName("");
+      setAvatarUrl("");
       return;
     }
     let active = true;
     setBalanceLoading(true);
-    void supabase.rpc("ensure_user_wallet").then(({ data, error }) => {
+    void Promise.all([
+      supabase.rpc("ensure_user_wallet"),
+      supabase.from("profiles").select("display_name,avatar_url").eq("id", user.id).maybeSingle(),
+    ]).then(([{ data, error }, profile]) => {
       if (!active) return;
       if (error) {
         setBalanceError(true);
@@ -57,6 +64,8 @@ function DashboardPage() {
         setBalance(Number(data?.[0]?.balance ?? 0));
         setBalanceError(false);
       }
+      setDisplayName(profile.data?.display_name?.trim() ?? "");
+      setAvatarUrl(profile.data?.avatar_url ?? "");
       setBalanceLoading(false);
     });
     return () => {
@@ -69,7 +78,14 @@ function DashboardPage() {
       <main className="mx-auto min-h-[70vh] max-w-7xl px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
         <div className="mb-6">
           <p className="text-xs font-semibold uppercase text-primary">BESTPLUG MARKETPLACE</p>
-          <h1 className="mt-2 text-3xl font-bold text-foreground sm:text-4xl">Welcome back</h1>
+          <div className="mt-2 flex items-center gap-3">
+            {avatarUrl && (
+              <img src={avatarUrl} alt="" className="size-10 rounded-full border border-border object-cover" />
+            )}
+            <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
+              Welcome back{displayName ? `, ${displayName}` : ""}
+            </h1>
+          </div>
         </div>
 
         <section

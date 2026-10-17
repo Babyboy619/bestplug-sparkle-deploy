@@ -1,16 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { ArrowUpRight, Wallet } from "lucide-react";
 import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { supabase } from "@/integrations/supabase/client";
 import { pageHead } from "@/lib/metadata";
 import { siteConfig } from "@/lib/site-config";
+import { startPaystarkTopup, verifyPaystarkTopup } from "@/lib/paystark.functions";
 import type { Database } from "@/integrations/supabase/types";
 
 type Tx = Database["public"]["Tables"]["wallet_transactions"]["Row"];
 type Order = Database["public"]["Tables"]["order_items"]["Row"];
+type PendingPayment = { reference: string; amount: number; authorizationUrl?: string };
 
 export const Route = createFileRoute("/wallet")({
   head: () =>
@@ -27,6 +31,11 @@ function WalletPage() {
   const [transactions, setTransactions] = useState<Tx[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [message, setMessage] = useState("");
+  const [amount, setAmount] = useState("1000");
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState<PendingPayment | null>(null);
+  const startTopup = useServerFn(startPaystarkTopup);
+  const verifyTopup = useServerFn(verifyPaystarkTopup);
 
   async function refresh() {
     const wallet = await supabase.rpc("ensure_user_wallet");
@@ -45,6 +54,28 @@ function WalletPage() {
     ]);
     setTransactions(tx.data ?? []);
     setOrders(items.data ?? []);
+    const { data: pending } = await supabase
+      .from("payment_intents")
+      .select("reference,amount,raw")
+      .eq("provider", "paystark")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setPendingPayment(
+      pending
+        ? {
+            reference: pending.reference,
+            amount: Number(pending.amount),
+            ...(typeof pending.raw === "object" &&
+            pending.raw !== null &&
+            "authorization_url" in pending.raw &&
+            typeof pending.raw["authorization_url"] === "string"
+              ? { authorizationUrl: pending.raw["authorization_url"] }
+              : {}),
+          }
+        : null,
+    );
   }
 
   useEffect(() => {
@@ -83,15 +114,98 @@ function WalletPage() {
                 <p className="mt-3 text-xs text-muted-foreground">{user.email}</p>
               </div>
               <div className="self-center border-l-2 border-primary pl-5">
-                <h2 className="font-semibold">
-                  {siteConfig.paymentProviderName} wallet funding is not available yet.
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Payment setup is awaiting the provider’s official API documentation and
-                  credentials. Your balance and existing transactions are unaffected.
-                </p>
+                <form
+                  className="space-y-3"
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    setPaymentBusy(true);
+                    setMessage("");
+                    try {
+                      const started = await startTopup({ data: { amount: Number(amount) } });
+                      setPendingPayment(started);
+                      setMessage("Payment started. Complete checkout, then check its status here.");
+                    } catch (error) {
+                      setMessage(
+                        error instanceof Error ? error.message : "Payment could not be started.",
+                      );
+                    } finally {
+                      setPaymentBusy(false);
+                    }
+                  }}
+                >
+                  <label className="block text-sm font-semibold" htmlFor="funding-amount">
+                    Fund Wallet (NGN)
+                    <Input
+                      id="funding-amount"
+                      className="mt-2 max-w-48"
+                      type="number"
+                      min="100"
+                      max="1000000"
+                      step="0.01"
+                      required
+                      value={amount}
+                      onChange={(event) => setAmount(event.target.value)}
+                      disabled={paymentBusy || Boolean(pendingPayment)}
+                    />
+                  </label>
+                  <Button type="submit" disabled={paymentBusy || Boolean(pendingPayment)}>
+                    {paymentBusy ? "Starting…" : "Continue to PayStark"}
+                  </Button>
+                </form>
               </div>
             </div>
+            {pendingPayment && (
+              <div className="mt-5 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
+                <p className="min-w-0 flex-1 text-sm">
+                  {siteConfig.paymentProviderName} payment of ₦
+                  {pendingPayment.amount.toLocaleString()} is pending.
+                </p>
+                {pendingPayment.authorizationUrl && (
+                  <Button asChild variant="outline">
+                    <a
+                      href={pendingPayment.authorizationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open checkout <ArrowUpRight />
+                    </a>
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  disabled={paymentBusy}
+                  onClick={async () => {
+                    setPaymentBusy(true);
+                    setMessage("");
+                    try {
+                      const result = await verifyTopup({
+                        data: { reference: pendingPayment.reference },
+                      });
+                      setMessage(
+                        result.error ??
+                          (result.status === "success"
+                            ? "Payment confirmed. Your wallet is updated."
+                            : "Payment is still pending."),
+                      );
+                      if (result.status === "success" || result.status === "failed") {
+                        setPendingPayment(null);
+                        await refresh();
+                      }
+                    } catch (error) {
+                      setMessage(
+                        error instanceof Error
+                          ? error.message
+                          : "Payment status could not be checked.",
+                      );
+                    } finally {
+                      setPaymentBusy(false);
+                    }
+                  }}
+                >
+                  Check payment
+                </Button>
+              </div>
+            )}
             {message && (
               <p role="status" className="mt-4 text-sm text-primary">
                 {message}

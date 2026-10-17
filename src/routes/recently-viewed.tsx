@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Clock3 } from "lucide-react";
-import { FeatureStatePage } from "@/components/feature-state-page";
+import { pageHead } from "@/lib/metadata";
+import { SavedProductsPage } from "@/components/saved-products-page";
 
 export const Route = createFileRoute("/recently-viewed")({
-  component: () => <FeatureStatePage title="Recently Viewed" icon={Clock3} />,
+  head: () => pageHead("Recently Viewed", "Review marketplace products you have viewed recently."),
+  component: () => <SavedProductsPage mode="recentlyViewed" />,
 });

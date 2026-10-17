@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
+import { ShoppingCart } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ function Details() {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState("1");
   const [busy, setBusy] = useState(false);
+  const [cartBusy, setCartBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -57,6 +59,17 @@ function Details() {
       active = false;
     };
   }, [slug]);
+  useEffect(() => {
+    if (!user || !product) return;
+    void supabase.from("recently_viewed").upsert(
+      {
+        user_id: user.id,
+        product_id: product.id,
+        viewed_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,product_id" },
+    );
+  }, [product, user]);
   return (
     <SiteFrame>
       <main className="mx-auto min-h-[65vh] max-w-4xl px-5 py-10">
@@ -94,6 +107,32 @@ function Details() {
               <p className="mt-2 text-xs text-muted-foreground">
                 {product.stock > 0 ? `${product.stock} available` : "Out of stock"}
               </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-5"
+                disabled={cartBusy || product.stock === 0}
+                onClick={async () => {
+                  if (!user) {
+                    await navigate({ to: "/auth" });
+                    return;
+                  }
+                  setCartBusy(true);
+                  const { error } = await supabase.rpc("add_cart_item", {
+                    _product_id: product.id,
+                    _quantity: 1,
+                  });
+                  setCartBusy(false);
+                  if (error) {
+                    setMessage("This product could not be added to your cart.");
+                  } else {
+                    window.dispatchEvent(new Event("bestplug-cart-updated"));
+                    setMessage("Added to cart.");
+                  }
+                }}
+              >
+                <ShoppingCart aria-hidden="true" /> {cartBusy ? "Adding…" : "Add to Cart"}
+              </Button>
               {user ? (
                 <form
                   className="mt-6 space-y-3"

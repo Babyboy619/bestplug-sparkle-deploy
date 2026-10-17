@@ -39,7 +39,6 @@ describe("App routing", () => {
       "/wishlist",
       "/recently-viewed",
       "/wallet",
-      "/achievements",
       "/account-settings",
       "/contact",
       "/sms-verify",

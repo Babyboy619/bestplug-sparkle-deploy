@@ -7,6 +7,7 @@ import {
   Clock3,
   Heart,
   Home,
+  LogOut,
   Menu,
   MessageCircle,
   Moon,
@@ -15,8 +16,8 @@ import {
   Settings,
   ShoppingBag,
   ShoppingCart,
+  ShieldCheck,
   Sun,
-  Trophy,
   Wallet,
   X,
   type LucideIcon,
@@ -24,6 +25,8 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import logo from "@/assets/bestplug-logo.jpg.asset.json";
 import { Button } from "@/components/ui/button";
+import { useAuthUser } from "@/hooks/use-auth-user";
+import { supabase } from "@/integrations/supabase/client";
 
 type MenuItem = {
   to:
@@ -34,7 +37,6 @@ type MenuItem = {
     | "/wishlist"
     | "/recently-viewed"
     | "/wallet"
-    | "/achievements"
     | "/account-settings"
     | "/contact";
   hash?: "#orders" | "#transactions";
@@ -64,7 +66,6 @@ const menuSections: { title: string; items: MenuItem[] }[] = [
     items: [
       { to: "/wallet", hash: "#orders", label: "My Orders", icon: Box },
       { to: "/wallet", hash: "#transactions", label: "Transaction History", icon: ReceiptText },
-      { to: "/achievements", label: "Achievements", icon: Trophy },
     ],
   },
   {
@@ -89,8 +90,10 @@ const bottomItems = [
 ] as const;
 
 export function SiteFrame({ children }: { children: ReactNode }) {
+  const { user, role } = useAuthUser();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem("bestplug-theme");
@@ -107,6 +110,25 @@ export function SiteFrame({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [menuOpen]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadCartCount() {
+      if (!user) {
+        setCartCount(0);
+        return;
+      }
+      const { data } = await supabase.from("cart_items").select("quantity").eq("user_id", user.id);
+      if (active) setCartCount((data ?? []).reduce((sum, row) => sum + row.quantity, 0));
+    }
+    const update = () => void loadCartCount();
+    update();
+    window.addEventListener("bestplug-cart-updated", update);
+    return () => {
+      active = false;
+      window.removeEventListener("bestplug-cart-updated", update);
+    };
+  }, [user]);
 
   function toggleTheme() {
     const nextDark = !isDark;
@@ -181,7 +203,14 @@ export function SiteFrame({ children }: { children: ReactNode }) {
             </Button>
             <Button variant="ghost" size="icon" className="size-9" asChild>
               <Link to="/cart" aria-label="Shopping cart">
-                <ShoppingCart />
+                <span className="relative">
+                  <ShoppingCart />
+                  {cartCount > 0 && (
+                    <span className="absolute -right-2 -top-2 flex size-4 items-center justify-center rounded-full bg-orange-500 text-[9px] font-bold text-white">
+                      {cartCount > 99 ? "99+" : cartCount}
+                    </span>
+                  )}
+                </span>
               </Link>
             </Button>
           </div>
@@ -238,6 +267,21 @@ export function SiteFrame({ children }: { children: ReactNode }) {
                   </div>
                 </section>
               ))}
+              {role === "admin" && (
+                <section>
+                  <h2 className="mb-2 px-3 text-[10px] font-bold uppercase text-slate-400">
+                    Administration
+                  </h2>
+                  <Link
+                    to="/admin"
+                    className="flex min-h-10 items-center gap-3 rounded-xl bg-white/10 px-3 py-2 text-sm font-medium text-white"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <ShieldCheck aria-hidden="true" className="size-[18px] text-orange-300" />
+                    Admin Dashboard
+                  </Link>
+                </section>
+              )}
             </nav>
           </aside>
         </div>
@@ -256,7 +300,14 @@ export function SiteFrame({ children }: { children: ReactNode }) {
               className="lux-dock-item"
               activeProps={{ className: "lux-dock-active" }}
             >
-              <Icon aria-hidden="true" className="size-5" />
+              <span className="relative">
+                <Icon aria-hidden="true" className="size-5" />
+                {label === "Cart" && cartCount > 0 && (
+                  <span className="absolute -right-2 -top-1 flex size-3.5 items-center justify-center rounded-full bg-orange-500 text-[8px] font-bold text-white">
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
+              </span>
               <span>{label}</span>
             </Link>
           );
@@ -288,12 +339,32 @@ export function SiteFrame({ children }: { children: ReactNode }) {
           </div>
           <div>
             <p className="text-sm font-semibold">Your account</p>
-            <Link className="mt-3 block text-sm text-muted-foreground" to="/auth">
-              Sign in or register
-            </Link>
-            <Link className="mt-3 block text-sm text-muted-foreground" to="/wallet">
-              Wallet and orders
-            </Link>
+            {user ? (
+              <>
+                <Link className="mt-3 block text-sm text-muted-foreground" to="/account-settings">
+                  Account Settings
+                </Link>
+                <Link className="mt-3 block text-sm text-muted-foreground" to="/wallet">
+                  Wallet and orders
+                </Link>
+                {role === "admin" && (
+                  <Link className="mt-3 block text-sm text-muted-foreground" to="/admin">
+                    Admin Dashboard
+                  </Link>
+                )}
+                <Button
+                  variant="link"
+                  className="mt-3 h-auto p-0 text-sm text-muted-foreground"
+                  onClick={() => void supabase.auth.signOut()}
+                >
+                  <LogOut aria-hidden="true" className="size-4" /> Log out
+                </Button>
+              </>
+            ) : (
+              <Link className="mt-3 block text-sm text-muted-foreground" to="/auth">
+                Sign in or register
+              </Link>
+            )}
           </div>
         </div>
         <div className="border-t border-border px-4 py-5 text-center text-xs text-muted-foreground">

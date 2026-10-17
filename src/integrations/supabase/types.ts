@@ -49,6 +49,45 @@ export type Database = {
           },
         ]
       }
+      cart_items: {
+        Row: {
+          created_at: string
+          product_id: string
+          quantity: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          product_id: string
+          quantity: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          product_id?: string
+          quantity?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
@@ -375,6 +414,27 @@ export type Database = {
         }
         Relationships: []
       }
+      recently_viewed: {
+        Row: { product_id: string; user_id: string; viewed_at: string }
+        Insert: { product_id: string; user_id: string; viewed_at?: string }
+        Update: { product_id?: string; user_id?: string; viewed_at?: string }
+        Relationships: [
+          {
+            foreignKeyName: "recently_viewed_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recently_viewed_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           key: string
@@ -415,6 +475,27 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wishlists: {
+        Row: { created_at: string; product_id: string; user_id: string }
+        Insert: { created_at?: string; product_id: string; user_id: string }
+        Update: { created_at?: string; product_id?: string; user_id?: string }
+        Relationships: [
+          {
+            foreignKeyName: "wishlists_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlists_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -522,6 +603,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_cart_item: {
+        Args: { _product_id: string; _quantity?: number }
+        Returns: number
+      }
+      set_cart_item_quantity: {
+        Args: { _product_id: string; _quantity: number }
+        Returns: number
+      }
+      purchase_cart_with_wallet: {
+        Args: { _request_reference: string }
+        Returns: string
+      }
       ensure_user_wallet: {
         Args: never
         Returns: {
@@ -554,6 +647,18 @@ export type Database = {
           credited: boolean
         }[]
       }
+      settle_paystark_payment: {
+        Args: {
+          _amount: number
+          _provider_data?: Json
+          _provider_reference?: string
+          _reference: string
+        }
+        Returns: {
+          already_credited: boolean
+          credited: boolean
+        }[]
+      }
     }
     Enums: {
       app_role: "user" | "admin"
@@ -563,7 +668,7 @@ export type Database = {
         | "pending_credentials"
         | "failed"
         | "refunded"
-      payment_provider: "neurapay" | "manual"
+      payment_provider: "neurapay" | "paystark" | "manual"
       tx_status: "pending" | "success" | "failed" | "reversed"
       tx_type: "credit" | "debit"
     }
@@ -701,7 +806,7 @@ export const Constants = {
         "failed",
         "refunded",
       ],
-      payment_provider: ["neurapay", "manual"],
+      payment_provider: ["neurapay", "paystark", "manual"],
       tx_status: ["pending", "success", "failed", "reversed"],
       tx_type: ["credit", "debit"],
     },

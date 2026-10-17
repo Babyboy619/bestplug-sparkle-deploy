@@ -11,7 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountSettingsRouteImport } from './routes/account-settings'
-import { Route as AchievementsRouteImport } from './routes/achievements'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BoostAccountsRouteImport } from './routes/boost-accounts'
 import { Route as CartRouteImport } from './routes/cart'
@@ -26,8 +26,12 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SmsVerifyRouteImport } from './routes/sms-verify'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as WishlistRouteImport } from './routes/wishlist'
+import { Route as ApiAdminRouteImport } from './routes/api/admin'
+import { Route as ApiProfileAvatarRouteImport } from './routes/api/profile-avatar'
+import { Route as PaymentsCallbackRouteImport } from './routes/payments.callback'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as ApiPublicNeurapayWebhookRouteImport } from './routes/api/public/neurapay-webhook'
+import { Route as ApiPublicPaystarkWebhookRouteImport } from './routes/api/public/paystark-webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,9 +43,9 @@ const AccountSettingsRoute = AccountSettingsRouteImport.update({
   path: '/account-settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AchievementsRoute = AchievementsRouteImport.update({
-  id: '/achievements',
-  path: '/achievements',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -114,6 +118,21 @@ const WishlistRoute = WishlistRouteImport.update({
   path: '/wishlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminRoute = ApiAdminRouteImport.update({
+  id: '/api/admin',
+  path: '/api/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProfileAvatarRoute = ApiProfileAvatarRouteImport.update({
+  id: '/api/profile-avatar',
+  path: '/api/profile-avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentsCallbackRoute = PaymentsCallbackRouteImport.update({
+  id: '/payments/callback',
+  path: '/payments/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsSlugRoute = ProductsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -125,11 +144,17 @@ const ApiPublicNeurapayWebhookRoute =
     path: '/api/public/neurapay-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaystarkWebhookRoute =
+  ApiPublicPaystarkWebhookRouteImport.update({
+    id: '/api/public/paystark-webhook',
+    path: '/api/public/paystark-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account-settings': typeof AccountSettingsRoute
-  '/achievements': typeof AchievementsRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/boost-accounts': typeof BoostAccountsRoute
   '/cart': typeof CartRoute
@@ -144,13 +169,17 @@ export interface FileRoutesByFullPath {
   '/sms-verify': typeof SmsVerifyRoute
   '/wallet': typeof WalletRoute
   '/wishlist': typeof WishlistRoute
+  '/api/admin': typeof ApiAdminRoute
+  '/api/profile-avatar': typeof ApiProfileAvatarRoute
+  '/payments/callback': typeof PaymentsCallbackRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
+  '/api/public/paystark-webhook': typeof ApiPublicPaystarkWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-settings': typeof AccountSettingsRoute
-  '/achievements': typeof AchievementsRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/boost-accounts': typeof BoostAccountsRoute
   '/cart': typeof CartRoute
@@ -165,14 +194,18 @@ export interface FileRoutesByTo {
   '/sms-verify': typeof SmsVerifyRoute
   '/wallet': typeof WalletRoute
   '/wishlist': typeof WishlistRoute
+  '/api/admin': typeof ApiAdminRoute
+  '/api/profile-avatar': typeof ApiProfileAvatarRoute
+  '/payments/callback': typeof PaymentsCallbackRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
+  '/api/public/paystark-webhook': typeof ApiPublicPaystarkWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account-settings': typeof AccountSettingsRoute
-  '/achievements': typeof AchievementsRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/boost-accounts': typeof BoostAccountsRoute
   '/cart': typeof CartRoute
@@ -187,15 +220,19 @@ export interface FileRoutesById {
   '/sms-verify': typeof SmsVerifyRoute
   '/wallet': typeof WalletRoute
   '/wishlist': typeof WishlistRoute
+  '/api/admin': typeof ApiAdminRoute
+  '/api/profile-avatar': typeof ApiProfileAvatarRoute
+  '/payments/callback': typeof PaymentsCallbackRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/api/public/neurapay-webhook': typeof ApiPublicNeurapayWebhookRoute
+  '/api/public/paystark-webhook': typeof ApiPublicPaystarkWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/account-settings'
-    | '/achievements'
+    | '/admin'
     | '/auth'
     | '/boost-accounts'
     | '/cart'
@@ -210,13 +247,17 @@ export interface FileRouteTypes {
     | '/sms-verify'
     | '/wallet'
     | '/wishlist'
+    | '/api/admin'
+    | '/api/profile-avatar'
+    | '/payments/callback'
     | '/products/$slug'
     | '/api/public/neurapay-webhook'
+    | '/api/public/paystark-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/account-settings'
-    | '/achievements'
+    | '/admin'
     | '/auth'
     | '/boost-accounts'
     | '/cart'
@@ -231,13 +272,17 @@ export interface FileRouteTypes {
     | '/sms-verify'
     | '/wallet'
     | '/wishlist'
+    | '/api/admin'
+    | '/api/profile-avatar'
+    | '/payments/callback'
     | '/products/$slug'
     | '/api/public/neurapay-webhook'
+    | '/api/public/paystark-webhook'
   id:
     | '__root__'
     | '/'
     | '/account-settings'
-    | '/achievements'
+    | '/admin'
     | '/auth'
     | '/boost-accounts'
     | '/cart'
@@ -252,14 +297,18 @@ export interface FileRouteTypes {
     | '/sms-verify'
     | '/wallet'
     | '/wishlist'
+    | '/api/admin'
+    | '/api/profile-avatar'
+    | '/payments/callback'
     | '/products/$slug'
     | '/api/public/neurapay-webhook'
+    | '/api/public/paystark-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountSettingsRoute: typeof AccountSettingsRoute
-  AchievementsRoute: typeof AchievementsRoute
+  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   BoostAccountsRoute: typeof BoostAccountsRoute
   CartRoute: typeof CartRoute
@@ -274,7 +323,11 @@ export interface RootRouteChildren {
   SmsVerifyRoute: typeof SmsVerifyRoute
   WalletRoute: typeof WalletRoute
   WishlistRoute: typeof WishlistRoute
+  ApiAdminRoute: typeof ApiAdminRoute
+  ApiProfileAvatarRoute: typeof ApiProfileAvatarRoute
+  PaymentsCallbackRoute: typeof PaymentsCallbackRoute
   ApiPublicNeurapayWebhookRoute: typeof ApiPublicNeurapayWebhookRoute
+  ApiPublicPaystarkWebhookRoute: typeof ApiPublicPaystarkWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -293,11 +346,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/achievements': {
-      id: '/achievements'
-      path: '/achievements'
-      fullPath: '/achievements'
-      preLoaderRoute: typeof AchievementsRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -398,6 +451,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WishlistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin': {
+      id: '/api/admin'
+      path: '/api/admin'
+      fullPath: '/api/admin'
+      preLoaderRoute: typeof ApiAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/profile-avatar': {
+      id: '/api/profile-avatar'
+      path: '/api/profile-avatar'
+      fullPath: '/api/profile-avatar'
+      preLoaderRoute: typeof ApiProfileAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payments/callback': {
+      id: '/payments/callback'
+      path: '/payments/callback'
+      fullPath: '/payments/callback'
+      preLoaderRoute: typeof PaymentsCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products/$slug': {
       id: '/products/$slug'
       path: '/$slug'
@@ -410,6 +484,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/neurapay-webhook'
       fullPath: '/api/public/neurapay-webhook'
       preLoaderRoute: typeof ApiPublicNeurapayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/paystark-webhook': {
+      id: '/api/public/paystark-webhook'
+      path: '/api/public/paystark-webhook'
+      fullPath: '/api/public/paystark-webhook'
+      preLoaderRoute: typeof ApiPublicPaystarkWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -430,7 +511,7 @@ const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountSettingsRoute: AccountSettingsRoute,
-  AchievementsRoute: AchievementsRoute,
+  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   BoostAccountsRoute: BoostAccountsRoute,
   CartRoute: CartRoute,
@@ -445,7 +526,11 @@ const rootRouteChildren: RootRouteChildren = {
   SmsVerifyRoute: SmsVerifyRoute,
   WalletRoute: WalletRoute,
   WishlistRoute: WishlistRoute,
+  ApiAdminRoute: ApiAdminRoute,
+  ApiProfileAvatarRoute: ApiProfileAvatarRoute,
+  PaymentsCallbackRoute: PaymentsCallbackRoute,
   ApiPublicNeurapayWebhookRoute: ApiPublicNeurapayWebhookRoute,
+  ApiPublicPaystarkWebhookRoute: ApiPublicPaystarkWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
