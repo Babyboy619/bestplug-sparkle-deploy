@@ -24,14 +24,16 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const { user } = useAuthUser();
+  const { user, loading, isAdmin, roleLoading } = useAuthUser();
   const navigate = useNavigate();
   useEffect(() => {
     setMode(requestedMode === "signup" ? "signup" : "signin");
   }, [requestedMode]);
   useEffect(() => {
-    if (user) void navigate({ to: "/wallet" });
-  }, [user, navigate]);
+    if (!loading && user && !roleLoading) {
+      void navigate({ to: isAdmin ? "/admin" : "/wallet" });
+    }
+  }, [user, loading, isAdmin, roleLoading, navigate]);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);

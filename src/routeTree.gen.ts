@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountSettingsRouteImport } from './routes/account-settings'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const AccountSettingsRoute = AccountSettingsRouteImport.update({
   id: '/account-settings',
   path: '/account-settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -95,6 +101,7 @@ const ApiPublicPaystarkWebhookRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account-settings': typeof AccountSettingsRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account-settings': typeof AccountSettingsRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account-settings': typeof AccountSettingsRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/contact': typeof ContactRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account-settings'
+    | '/admin'
     | '/auth'
     | '/contact'
     | '/how-it-works'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account-settings'
+    | '/admin'
     | '/auth'
     | '/contact'
     | '/how-it-works'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account-settings'
+    | '/admin'
     | '/auth'
     | '/contact'
     | '/how-it-works'
@@ -189,6 +201,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountSettingsRoute: typeof AccountSettingsRoute
+  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   ContactRoute: typeof ContactRoute
   HowItWorksRoute: typeof HowItWorksRoute
@@ -215,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/account-settings'
       fullPath: '/account-settings'
       preLoaderRoute: typeof AccountSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -312,6 +332,7 @@ const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountSettingsRoute: AccountSettingsRoute,
+  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   ContactRoute: ContactRoute,
   HowItWorksRoute: HowItWorksRoute,

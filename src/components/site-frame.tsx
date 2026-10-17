@@ -11,6 +11,7 @@ import {
   Moon,
   Package,
   ReceiptText,
+  ShieldCheck,
   Settings,
   ShoppingBag,
   Sun,
@@ -25,7 +26,7 @@ import { useAuthUser } from "@/hooks/use-auth-user";
 import { supabase } from "@/integrations/supabase/client";
 
 type MenuItem = {
-  to: "/" | "/how-it-works" | "/products" | "/wallet" | "/account-settings" | "/contact";
+  to: "/" | "/how-it-works" | "/products" | "/wallet" | "/account-settings" | "/contact" | "/admin";
   hash?: "#orders" | "#transactions";
   label: string;
   icon: LucideIcon;
@@ -71,7 +72,7 @@ const bottomItems = [
 ] as const;
 
 export function SiteFrame({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuthUser();
+  const { user, loading, isAdmin } = useAuthUser();
   const { pathname, hash } = useRouterState({
     select: (state) => ({ pathname: state.location.pathname, hash: state.location.hash }),
   });
@@ -139,6 +140,14 @@ export function SiteFrame({ children }: { children: ReactNode }) {
             >
               Buy Account
             </Link>
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                Admin Dashboard
+              </Link>
+            )}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-0.5 md:ml-3">
             <span
@@ -219,13 +228,37 @@ export function SiteFrame({ children }: { children: ReactNode }) {
                   </div>
                 </section>
               ))}
+              {isAdmin && (
+                <section>
+                  <h2 className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                    Administration
+                  </h2>
+                  <Link
+                    to="/admin"
+                    className="flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-white/10"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <ShieldCheck
+                      aria-hidden="true"
+                      className="size-[18px] shrink-0 text-orange-300"
+                    />
+                    <span>Admin Dashboard</span>
+                  </Link>
+                </section>
+              )}
             </nav>
           </aside>
         </div>
       )}
 
-      <nav aria-label="Primary mobile navigation" className="lux-dock md:hidden">
-        {bottomItems.map((item) => {
+      <nav
+        aria-label="Primary mobile navigation"
+        className={`lux-dock${isAdmin ? " lux-dock-admin" : ""} md:hidden`}
+      >
+        {(isAdmin
+          ? [...bottomItems, { to: "/admin", label: "Admin", icon: ShieldCheck, exact: true }]
+          : bottomItems
+        ).map((item) => {
           const { to, label, icon: Icon, exact } = item;
           const itemHash = "hash" in item ? item.hash : undefined;
           const isActive =
@@ -289,6 +322,11 @@ export function SiteFrame({ children }: { children: ReactNode }) {
                 <Link className="mt-3 block text-sm text-muted-foreground" to="/wallet">
                   Wallet and orders
                 </Link>
+                {isAdmin && (
+                  <Link className="mt-3 block text-sm text-muted-foreground" to="/admin">
+                    Admin Dashboard
+                  </Link>
+                )}
                 <Button
                   variant="link"
                   className="mt-3 h-auto p-0 text-sm text-muted-foreground"

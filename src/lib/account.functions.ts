@@ -130,6 +130,11 @@ export const adminData = createServerFn({ method: "POST" })
         .order("created_at", { ascending: false })
         .limit(50),
     ]);
+    const dataError = products.error ?? orders.error ?? profiles.error;
+    if (dataError) {
+      console.error("Administrator dashboard query failed:", dataError);
+      throw new Error("Administrator dashboard data could not be loaded. Please try again.");
+    }
     return {
       products: products.data ?? [],
       orders: orders.data ?? [],
