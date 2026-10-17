@@ -49,6 +49,42 @@ export type Database = {
           },
         ]
       }
+      cart_items: {
+        Row: {
+          product_id: string
+          quantity: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          product_id: string
+          quantity?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          product_id?: string
+          quantity?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
@@ -102,6 +138,8 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          payment_reference: string | null
+          request_key: string | null
           status: Database["public"]["Enums"]["order_status"]
           total: number
           user_id: string
@@ -111,6 +149,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          payment_reference?: string | null
+          request_key?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total: number
           user_id: string
@@ -120,6 +160,8 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          payment_reference?: string | null
+          request_key?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           total?: number
           user_id?: string
@@ -148,6 +190,7 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          order_id: string | null
           provider: Database["public"]["Enums"]["payment_provider"]
           provider_reference: string | null
           raw: Json
@@ -161,6 +204,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          order_id?: string | null
           provider: Database["public"]["Enums"]["payment_provider"]
           provider_reference?: string | null
           raw?: Json
@@ -174,6 +218,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          order_id?: string | null
           provider?: Database["public"]["Enums"]["payment_provider"]
           provider_reference?: string | null
           raw?: Json
@@ -183,6 +228,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_intents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_intents_user_id_fkey"
             columns: ["user_id"]
@@ -375,6 +427,39 @@ export type Database = {
         }
         Relationships: []
       }
+      recently_viewed: {
+        Row: {
+          product_id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          product_id: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          product_id?: string
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recently_viewed_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recently_viewed_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           key: string
@@ -517,6 +602,39 @@ export type Database = {
           },
         ]
       }
+      wishlist_items: {
+        Row: {
+          created_at: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wishlist_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -531,6 +649,7 @@ export type Database = {
           updated_at: string
         }[]
       }
+      fail_paystack: { Args: { _reference: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -538,6 +657,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      prepare_cart_order: {
+        Args: { _external: boolean; _request: string; _user: string }
+        Returns: string
+      }
+      purchase_cart: { Args: { _request: string }; Returns: string }
       purchase_with_wallet: {
         Args: { _product_id: string; _quantity: number }
         Returns: string
@@ -554,6 +678,15 @@ export type Database = {
           credited: boolean
         }[]
       }
+      settle_paystack: {
+        Args: {
+          _amount: number
+          _currency: string
+          _provider_id: string
+          _reference: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "user" | "admin"
@@ -563,7 +696,7 @@ export type Database = {
         | "pending_credentials"
         | "failed"
         | "refunded"
-      payment_provider: "neurapay" | "manual"
+      payment_provider: "neurapay" | "manual" | "paystack"
       tx_status: "pending" | "success" | "failed" | "reversed"
       tx_type: "credit" | "debit"
     }
@@ -701,7 +834,7 @@ export const Constants = {
         "failed",
         "refunded",
       ],
-      payment_provider: ["neurapay", "manual"],
+      payment_provider: ["neurapay", "manual", "paystack"],
       tx_status: ["pending", "success", "failed", "reversed"],
       tx_type: ["credit", "debit"],
     },

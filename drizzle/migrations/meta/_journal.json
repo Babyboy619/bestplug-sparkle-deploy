@@ -15,6 +15,13 @@
       "when": 1792106077164,
       "tag": "0001_fix_wallet_initialization",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792232242854,
+      "tag": "0002_shopping_and_paystack",
+      "breakpoints": true
     }
   ]
 }
