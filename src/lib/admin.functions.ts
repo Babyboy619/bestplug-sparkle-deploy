@@ -9,7 +9,9 @@ const requireAdmin = async (supabase: SupabaseClient<Database>, userId: string) 
   const { data, error } = await supabase.rpc("is_active_admin", { _user_id: userId });
   if (error) {
     console.error("Administrator authorization check failed:", error);
-    throw new Error("Administrator access could not be verified.");
+    throw new Error(
+      `Administrator authorization could not be checked (database error ${error.code ?? "unknown"}).`,
+    );
   }
   if (data !== true) throw new Error("Forbidden: administrator access required");
 };

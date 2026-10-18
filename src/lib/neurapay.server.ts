@@ -14,7 +14,12 @@ export interface NeuraPayResult {
   json: Record<string, unknown> | null;
 }
 
-export function makeNeuraPayConfig(secretKey: string, businessId: string, webhookSecret: string, baseUrl?: string): NeuraPayConfig {
+export function makeNeuraPayConfig(
+  secretKey: string,
+  businessId: string,
+  webhookSecret: string,
+  baseUrl?: string,
+): NeuraPayConfig {
   return {
     baseUrl: (baseUrl || NEURAPAY_BASE_URL).replace(/\/+$/, ""),
     secretKey,
@@ -49,7 +54,10 @@ export async function neuraPayRequest(
       json: isRecord(json) ? json : null,
     };
   } catch (error) {
-    console.error("NeuraPay request failed", error instanceof Error ? error.message : "network error");
+    console.error(
+      "NeuraPay request failed",
+      error instanceof Error ? error.message : "network error",
+    );
     return { ok: false, status: 0, json: null };
   }
 }
@@ -107,18 +115,42 @@ export async function verifyNeuraPayTransaction(
     "GET",
   );
   if (result.status === 404) {
-    return { confirmed: false, status: "pending", reason: "pending", providerReference: null, payload: {} };
+    return {
+      confirmed: false,
+      status: "pending",
+      reason: "pending",
+      providerReference: null,
+      payload: {},
+    };
   }
   if (!result.ok) {
-    return { confirmed: false, status: "pending", reason: "unavailable", providerReference: null, payload: {} };
+    return {
+      confirmed: false,
+      status: "pending",
+      reason: "unavailable",
+      providerReference: null,
+      payload: {},
+    };
   }
 
   const payload = transactionPayload(result.json);
   const status = String(
-    findNeuraPayField(payload, ["status", "payment_status", "paymentStatus", "transactionStatus"]) ?? "",
+    findNeuraPayField(payload, [
+      "status",
+      "payment_status",
+      "paymentStatus",
+      "transactionStatus",
+    ]) ?? "",
   ).toLowerCase();
   if (!PAID_STATES.has(status)) {
-    const terminal = ["failed", "cancelled", "canceled", "declined", "reversed", "expired"].includes(status);
+    const terminal = [
+      "failed",
+      "cancelled",
+      "canceled",
+      "declined",
+      "reversed",
+      "expired",
+    ].includes(status);
     return {
       confirmed: false,
       status: terminal ? status : "pending",
@@ -128,19 +160,45 @@ export async function verifyNeuraPayTransaction(
     };
   }
 
-  const paidAmount = findNeuraPayField(payload, ["amountPaid", "amount_paid", "settledAmount", "amount", "value"]);
+  const paidAmount = findNeuraPayField(payload, [
+    "amountPaid",
+    "amount_paid",
+    "settledAmount",
+    "amount",
+    "value",
+  ]);
   const numericPaid = Number(paidAmount);
-  if (paidAmount === undefined || !Number.isFinite(numericPaid) || Math.abs(numericPaid - expectedAmount) > 0.01) {
-    return { confirmed: false, status: "failed", reason: "amount_mismatch", providerReference: null, payload };
+  if (
+    paidAmount === undefined ||
+    !Number.isFinite(numericPaid) ||
+    Math.abs(numericPaid - expectedAmount) > 0.01
+  ) {
+    return {
+      confirmed: false,
+      status: "failed",
+      reason: "amount_mismatch",
+      providerReference: null,
+      payload,
+    };
   }
 
-  const currency = String(findNeuraPayField(payload, ["currency", "currency_code"]) ?? "NGN").toUpperCase();
-  if (currency !== "NGN") {
-    return { confirmed: false, status: "failed", reason: "currency_mismatch", providerReference: null, payload };
+  const currency = findNeuraPayField(payload, ["currency", "currency_code"]);
+  if (typeof currency !== "string" || currency.toUpperCase() !== "NGN") {
+    return {
+      confirmed: false,
+      status: "failed",
+      reason: "currency_mismatch",
+      providerReference: null,
+      payload,
+    };
   }
 
   const providerReference = findNeuraPayField(payload, [
-    "transactionId", "transaction_id", "transactionReference", "transaction_reference", "id",
+    "transactionId",
+    "transaction_id",
+    "transactionReference",
+    "transaction_reference",
+    "id",
   ]);
   return {
     confirmed: true,
@@ -156,7 +214,10 @@ export async function verifyNeuraPayWebhookSignature(
   signatureHeader: string,
   secret: string,
 ): Promise<boolean> {
-  const candidate = signatureHeader.replace(/^sha256=/i, "").trim().toLowerCase();
+  const candidate = signatureHeader
+    .replace(/^sha256=/i, "")
+    .trim()
+    .toLowerCase();
   if (!candidate || !/^[a-f0-9]{64}$/.test(candidate) || !secret) return false;
   const key = await crypto.subtle.importKey(
     "raw",
@@ -170,7 +231,8 @@ export async function verifyNeuraPayWebhookSignature(
   );
   let difference = 0;
   for (let index = 0; index < signature.length; index += 1) {
-    difference |= (signature[index] ?? 0) ^ Number.parseInt(candidate.slice(index * 2, index * 2 + 2), 16);
+    difference |=
+      (signature[index] ?? 0) ^ Number.parseInt(candidate.slice(index * 2, index * 2 + 2), 16);
   }
   return difference === 0;
 }

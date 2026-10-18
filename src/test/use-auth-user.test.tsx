@@ -29,6 +29,7 @@ function AuthStatus() {
       <output data-testid="role">
         {roleLoading ? "checking" : roleError ? "error" : isAdmin ? "admin" : "not-admin"}
       </output>
+      <output data-testid="roleError">{roleError}</output>
       <button onClick={retryAdminVerification}>Retry</button>
     </>
   );
@@ -42,7 +43,10 @@ describe("AuthProvider administrator verification", () => {
 
   it("waits for the restored session, checks its UUID, and allows retry after an error", async () => {
     mocks.rpc
-      .mockResolvedValueOnce({ data: null, error: new Error("temporary database failure") })
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "PGRST202", message: "function unavailable" },
+      })
       .mockResolvedValueOnce({ data: true, error: null });
 
     render(
@@ -62,6 +66,7 @@ describe("AuthProvider administrator verification", () => {
     act(() => initializeSession("INITIAL_SESSION", session));
 
     await waitFor(() => expect(screen.getByTestId("role")).toHaveTextContent("error"));
+    expect(screen.getByTestId("roleError")).toHaveTextContent("PGRST202");
     expect(screen.getByTestId("auth")).toHaveTextContent("actual-auth-user-uuid");
     expect(mocks.rpc).toHaveBeenNthCalledWith(1, "is_active_admin", {
       _user_id: "actual-auth-user-uuid",

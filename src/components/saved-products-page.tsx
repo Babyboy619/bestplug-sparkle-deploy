@@ -6,25 +6,12 @@ import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
-
-type Product = Pick<
-  Database["public"]["Tables"]["products"]["Row"],
-  | "id"
-  | "title"
-  | "slug"
-  | "description"
-  | "price"
-  | "currency"
-  | "stock"
-  | "image_url"
-  | "product_status"
->;
+import type { CatalogProduct } from "@/lib/catalog.types";
 type Mode = "wishlist" | "recentlyViewed";
 
 export function SavedProductsPage({ mode }: { mode: Mode }) {
   const { user, loading: authLoading } = useAuthUser();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const isWishlist = mode === "wishlist";
@@ -68,7 +55,7 @@ export function SavedProductsPage({ mode }: { mode: Mode }) {
       setLoading(false);
       return;
     }
-    const productsById = new Map((data ?? []).map((product) => [product.id, product as Product]));
+    const productsById = new Map((data ?? []).map((product) => [product.id, product]));
     setProducts(ids.flatMap((id) => (productsById.has(id) ? [productsById.get(id)!] : [])));
     setLoading(false);
   }, [isWishlist, user]);

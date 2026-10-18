@@ -124,6 +124,52 @@ export type Database = {
           },
         ]
       }
+      admin_inventory_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          credential_id: string
+          product_id: string
+          reference: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          credential_id: string
+          product_id: string
+          reference: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          credential_id?: string
+          product_id?: string
+          reference?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_inventory_requests_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_inventory_requests_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "product_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_inventory_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           product_id: string

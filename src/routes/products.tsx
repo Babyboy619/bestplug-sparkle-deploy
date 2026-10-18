@@ -6,20 +6,9 @@ import { Input } from "@/components/ui/input";
 import { SiteFrame } from "@/components/site-frame";
 import { CatalogProductCard } from "@/components/catalog-product-card";
 import { supabase } from "@/integrations/supabase/client";
+import type { CatalogListingProduct } from "@/lib/catalog.types";
 
 type Category = { id: string; name: string; slug: string };
-type Product = {
-  id: string;
-  category_id: string | null;
-  title: string;
-  slug: string;
-  description: string | null;
-  price: number;
-  currency: string;
-  stock: number;
-  image_url: string | null;
-  product_status: "draft" | "published" | "unavailable";
-};
 
 export const Route = createFileRoute("/products")({
   validateSearch: (search: Record<string, unknown>): { category?: string; q?: string } => ({
@@ -48,7 +37,7 @@ export const Route = createFileRoute("/products")({
 function ProductListingPage() {
   const { category: initialCategory, q: initialQuery } = Route.useSearch();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<CatalogListingProduct[]>([]);
   const [category, setCategory] = useState(initialCategory ?? "");
   const [query, setQuery] = useState(initialQuery ?? "");
   const [loading, setLoading] = useState(true);
@@ -75,7 +64,7 @@ function ProductListingPage() {
         setLoadError(true);
       } else {
         setCategories(categoryResult.data ?? []);
-        setProducts((productResult.data ?? []) as Product[]);
+        setProducts(productResult.data ?? []);
       }
       setLoading(false);
     });

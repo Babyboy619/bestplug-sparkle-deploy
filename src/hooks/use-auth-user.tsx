@@ -19,6 +19,21 @@ type AuthState = {
   retryAdminVerification: () => void;
 };
 
+function verificationErrorMessage(error: unknown): string {
+  const code =
+    typeof error === "object" && error !== null && "code" in error && typeof error.code === "string"
+      ? error.code
+      : null;
+
+  if (code === "PGRST202") {
+    return "The administrator verification function is unavailable (PGRST202). Apply pending database migrations or refresh the Supabase schema cache, then retry.";
+  }
+
+  return code
+    ? `Administrator verification failed with database error ${code}. Retry or contact support if the problem continues.`
+    : "Administrator verification failed because the server could not check this session. Retry or contact support if the problem continues.";
+}
+
 const AuthContext = createContext<AuthState>({
   user: null,
   loading: true,
@@ -88,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!active) return;
         if (error) {
           console.error("Administrator role verification failed:", error);
-          setRoleError("Administrator access could not be verified. Please try again.");
+          setRoleError(verificationErrorMessage(error));
           setIsAdmin(false);
         } else {
           setIsAdmin(data === true);
@@ -96,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         if (!active) return;
         console.error("Administrator role verification failed:", error);
-        setRoleError("Administrator access could not be verified. Please try again.");
+        setRoleError(verificationErrorMessage(error));
         setIsAdmin(false);
       } finally {
         if (active) setRoleLoading(false);

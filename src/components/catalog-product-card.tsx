@@ -6,26 +6,13 @@ import { Button } from "@/components/ui/button";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { addCartItem } from "@/lib/cart";
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
-
-type Product = Pick<
-  Database["public"]["Tables"]["products"]["Row"],
-  | "id"
-  | "title"
-  | "slug"
-  | "description"
-  | "price"
-  | "currency"
-  | "stock"
-  | "image_url"
-  | "product_status"
->;
+import type { CatalogProduct } from "@/lib/catalog.types";
 
 export function CatalogProductCard({
   product,
   categoryName,
 }: {
-  product: Product;
+  product: CatalogProduct;
   categoryName?: string;
 }) {
   const { user } = useAuthUser();
