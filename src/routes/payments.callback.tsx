@@ -6,8 +6,10 @@ import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { verifyPaystarkTopup } from "@/lib/paystark.functions";
+import { pageHead } from "@/lib/metadata";
 
 export const Route = createFileRoute("/payments/callback")({
+  head: () => pageHead("Payment Status", "Check your BestPlug wallet payment confirmation securely."),
   validateSearch: (search: Record<string, unknown>) => ({
     reference: typeof search["reference"] === "string" ? search["reference"] : "",
   }),
