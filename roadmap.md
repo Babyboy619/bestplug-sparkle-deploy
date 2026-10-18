@@ -4,9 +4,10 @@
 - [x] Verify public pages and account/wallet behavior; check security.
 - [x] Requested publishing at https://bestplug-sparkle-deploy.lovable.app; deployment completion not yet verified.
 - [ ] Import existing customers/catalog/orders — blocked on record exports.
-- [ ] Replace NeuraPay with verified PayStark/Paystack wallet funding, external cart checkout, signed webhooks; live checks blocked on rotated credentials.
+- [ ] Replace NeuraPay with verified PayStark/Paystack wallet funding, external cart checkout, signed webhooks; credentials saved, live checks still unverified.
 - [ ] Fix session-aware navigation and secure admin dashboard/login redirects.
 - [ ] Implement database cart, multi-product checkout, wishlist and recently viewed.
 - [ ] Complete profile/photo/email/password/logout settings.
 - [ ] Complete three-part dashboard, shortcuts, contact page and remove obsolete achievement navigation.
 - [ ] Run rule tests and authenticated/mobile checks.
+- [ ] Repair missing admin schema definitions and verify the preview compiles.

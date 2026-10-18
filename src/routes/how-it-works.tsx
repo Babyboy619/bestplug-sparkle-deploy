@@ -2,8 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Search, Wallet } from "lucide-react";
 import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
+import { pageHead } from "@/lib/metadata";
 
-export const Route = createFileRoute("/how-it-works")({ component: HowItWorksPage });
+export const Route = createFileRoute("/how-it-works")({
+  head: () => pageHead("How It Works", "Browse BestPlug listings, fund your wallet, and find your account delivery."),
+  component: HowItWorksPage,
+});
 
 const steps = [
   {
