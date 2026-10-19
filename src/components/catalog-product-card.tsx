@@ -83,36 +83,33 @@ export function CatalogProductCard({
 
   return (
     <article className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
-      <div className="relative">
-        {product.image_url ? (
-          <img src={product.image_url} alt="" className="aspect-[16/9] w-full object-cover" />
-        ) : (
-          <div aria-hidden="true" className="aspect-[16/9] w-full bg-secondary" />
-        )}
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          aria-label={
-            wishlisted
-              ? `Remove ${product.title} from wishlist`
-              : `Add ${product.title} to wishlist`
-          }
-          aria-pressed={wishlisted}
-          disabled={busy}
-          onClick={() => void toggleWishlist()}
-          className="absolute right-3 top-3 size-10 rounded-full bg-background/90 shadow"
-        >
-          <Heart className={wishlisted ? "fill-rose-500 text-rose-500" : "text-foreground"} />
-        </Button>
-      </div>
       <div className="flex flex-1 flex-col p-4">
-        <h2 className="line-clamp-2 font-semibold">{product.title}</h2>
-        {categoryName && (
-          <p className="mt-1 text-xs font-medium text-primary" aria-label="Platform">
-            {categoryName}
-          </p>
-        )}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="line-clamp-2 font-semibold">{product.title}</h2>
+            {categoryName && (
+              <p className="mt-1 text-xs font-medium text-primary" aria-label="Platform">
+                {categoryName}
+              </p>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            aria-label={
+              wishlisted
+                ? `Remove ${product.title} from wishlist`
+                : `Add ${product.title} to wishlist`
+            }
+            aria-pressed={wishlisted}
+            disabled={busy}
+            onClick={() => void toggleWishlist()}
+            className="size-10 shrink-0"
+          >
+            <Heart className={wishlisted ? "fill-rose-500 text-rose-500" : "text-foreground"} />
+          </Button>
+        </div>
         {product.description && (
           <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">
             {product.description}

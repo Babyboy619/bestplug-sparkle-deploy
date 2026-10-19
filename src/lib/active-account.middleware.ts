@@ -4,11 +4,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const requireActiveAccount = createMiddleware({ type: "function" })
   .middleware([requireSupabaseAuth])
   .server(async ({ next, context }) => {
-    let { data, error } = await context.supabase
+    const account = await context.supabase
       .from("profiles")
       .select("id,suspended,deleted_at")
       .eq("id", context.userId)
       .maybeSingle();
+    let data: { id: string; suspended: boolean; deleted_at?: string | null } | null = account.data;
+    let error = account.error;
     if (error?.code === "PGRST204" || error?.code === "42703") {
       const fallback = await context.supabase
         .from("profiles")

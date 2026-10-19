@@ -15,9 +15,10 @@ import { Input } from "@/components/ui/input";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { supabase } from "@/integrations/supabase/client";
 import { addCartItem } from "@/lib/cart";
+import type { CatalogProduct } from "@/lib/catalog.types";
 import { pageHead } from "@/lib/metadata";
 import type { Database } from "@/integrations/supabase/types";
-type Product = Database["public"]["Tables"]["products"]["Row"];
+type Product = CatalogProduct & Pick<Database["public"]["Tables"]["products"]["Row"], "metadata">;
 export const Route = createFileRoute("/products/$slug")({
   head: () =>
     pageHead(
@@ -47,7 +48,7 @@ function Details() {
     setInsufficientFunds(false);
     void supabase
       .from("products")
-      .select("*")
+      .select("id,title,slug,description,price,currency,stock,product_status,metadata")
       .eq("slug", slug)
       .eq("published", true)
       .is("archived_at", null)
@@ -87,14 +88,7 @@ function Details() {
             <p className="mt-3 text-muted-foreground">This listing is not available.</p>
           </div>
         ) : (
-          <div className="mt-8 grid gap-8 sm:grid-cols-2">
-            {product.image_url && (
-              <img
-                className="aspect-square w-full object-cover"
-                src={product.image_url}
-                alt={product.title}
-              />
-            )}
+          <div className="mt-8">
             <div>
               <p className="text-xs uppercase text-primary">BESTPLUG MARKETPLACE</p>
               <h1 className="section-heading mt-3">{product.title}</h1>
