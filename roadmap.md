@@ -11,3 +11,4 @@
 - [ ] Complete three-part dashboard, shortcuts, contact page and remove obsolete achievement navigation.
 - [ ] Run rule tests and authenticated/mobile checks.
 - [ ] Repair missing admin schema definitions and verify the preview compiles.
+- [ ] Verify the reported administrator sign-in error using the existing role system; broader admin setup is blocked by an invalid pending database migration.
