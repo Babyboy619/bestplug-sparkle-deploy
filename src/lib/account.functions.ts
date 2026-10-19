@@ -14,7 +14,7 @@ export const accountData = createServerFn({ method: "POST" })
         .select("display_name,avatar_url,email")
         .eq("id", context.userId)
         .single(),
-      context.supabase.rpc("is_active_admin", { _user_id: context.userId }),
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
       context.supabase.from("wallets").select("balance").eq("user_id", context.userId).single(),
     ]);
     if (role.error) {

@@ -85,9 +85,14 @@ BEGIN
 END $$;
 ```
 
+The dashboard checks the signed-in user's `admin` role through the baseline
+`public.has_role(uuid, app_role)` RPC and confirms the user's own profile is
+active. Server-side admin operations repeat the role check using the user ID
+from the verified session; they never trust a browser-supplied email or ID.
+
 The `0008_repair_admin_authentication.sql` migration reinstalls the
-`public.is_active_admin(uuid)` RPC used by the frontend and server-side admin
-authorization, restricts execution to authenticated/service roles, safely
+`public.is_active_admin(uuid)` RPC used by admin database policies and newer
+admin functions, restricts execution to authenticated/service roles, safely
 assigns the `admin` role to the one existing verified
 `bestplugmarketplace@gmail.com` Auth account (if present), and requests a
 PostgREST schema-cache reload. If applying SQL manually instead of using the
