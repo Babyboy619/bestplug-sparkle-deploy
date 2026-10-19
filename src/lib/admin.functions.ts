@@ -275,11 +275,11 @@ export const adminSaveCategory = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
     const { data: id, error } = await context.supabase.rpc("admin_save_category", {
-      _category_id: data.id,
+      _category_id: data.id as string,
       _name: data.name,
       _slug: data.slug,
       _description: data.description,
-      _image_url: data.imageUrl || null,
+      _image_url: (data.imageUrl || null) as string,
       _display_order: data.displayOrder,
     });
     if (error || !id) {
@@ -305,7 +305,7 @@ export const adminSetCategoryState = createServerFn({ method: "POST" })
     const { data: result, error } = await context.supabase.rpc("admin_set_category_state", {
       _category_id: data.categoryId,
       _action: data.action,
-      _reassign_to: data.reassignTo,
+      _reassign_to: (data.reassignTo ?? null) as string,
     });
     if (error || !result?.[0]) {
       if (error) console.error("Administrator category action failed:", error);
@@ -332,7 +332,7 @@ export const adminBroadcastNotification = createServerFn({ method: "POST" })
       _title: data.title,
       _message: data.message,
       _type: data.type,
-      _destination_url: data.destinationUrl || null,
+      _destination_url: (data.destinationUrl || null) as string,
     });
     if (error || !result?.[0]) {
       if (error) console.error("Administrator notification broadcast failed:", error);
@@ -664,14 +664,14 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
       slug = existing.slug;
     }
     const { data: id, error } = await context.supabase.rpc("admin_save_product", {
-      _product_id: data.id,
+      _product_id: data.id as string,
       _title: data.title,
       _slug: slug,
-      _category_id: data.categoryId,
+      _category_id: data.categoryId as string,
       _description: data.description,
       _price: data.price,
       _stock: data.stock,
-      _image_url: data.imageUrl || null,
+      _image_url: (data.imageUrl || null) as string,
       _status: data.status,
       _metadata: {
         specifications: data.specifications,
