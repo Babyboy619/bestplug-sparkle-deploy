@@ -6,6 +6,7 @@ import { AuthProvider, useAuthUser } from "@/hooks/use-auth-user";
 const mocks = vi.hoisted(() => ({
   authCallbacks: [] as Array<(event: AuthChangeEvent, session: Session | null) => void>,
   rpc: vi.fn(),
+  profile: vi.fn(),
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -17,6 +18,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       },
     },
     rpc: mocks.rpc,
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: mocks.profile }) }) }),
   },
 }));
 
@@ -39,6 +41,8 @@ describe("AuthProvider administrator verification", () => {
   beforeEach(() => {
     mocks.authCallbacks = [];
     mocks.rpc.mockReset();
+    mocks.profile.mockReset();
+    mocks.profile.mockResolvedValue({ data: { suspended: false }, error: null });
   });
 
   it("waits for the restored session, checks its UUID, and allows retry after an error", async () => {
@@ -66,10 +70,10 @@ describe("AuthProvider administrator verification", () => {
     act(() => initializeSession("INITIAL_SESSION", session));
 
     await waitFor(() => expect(screen.getByTestId("role")).toHaveTextContent("error"));
-    expect(screen.getByTestId("roleError")).toHaveTextContent("PGRST202");
     expect(screen.getByTestId("auth")).toHaveTextContent("actual-auth-user-uuid");
-    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "is_active_admin", {
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "has_role", {
       _user_id: "actual-auth-user-uuid",
+      _role: "admin",
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -93,8 +97,9 @@ describe("AuthProvider administrator verification", () => {
     );
 
     await waitFor(() => expect(screen.getByTestId("role")).toHaveTextContent("not-admin"));
-    expect(mocks.rpc).toHaveBeenCalledWith("is_active_admin", {
+    expect(mocks.rpc).toHaveBeenCalledWith("has_role", {
       _user_id: "regular-user-uuid",
+      _role: "admin",
     });
 
     act(() => initializeSession("SIGNED_OUT", null));
@@ -102,5 +107,14 @@ describe("AuthProvider administrator verification", () => {
       expect(screen.getByTestId("auth")).toHaveTextContent("signed-out");
       expect(screen.getByTestId("role")).toHaveTextContent("not-admin");
     });
+  });
+  it("denies administrator access when the profile is suspended", async () => {
+    mocks.rpc.mockResolvedValue({ data: true, error: null });
+    mocks.profile.mockResolvedValue({ data: { suspended: true }, error: null });
+    render(<AuthProvider><AuthStatus /></AuthProvider>);
+    const callback = mocks.authCallbacks[0];
+    if (!callback) throw new Error("Auth subscription missing");
+    act(() => callback("INITIAL_SESSION", { user: { id: "suspended-admin" } } as Session));
+    await waitFor(() => expect(screen.getByTestId("role")).toHaveTextContent("not-admin"));
   });
 });

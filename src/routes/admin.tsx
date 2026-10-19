@@ -159,9 +159,8 @@ function AdminPage() {
                         ["Suspended users", overview.suspendedUsers],
                         ["Total products", overview.products],
                         ["Published products", overview.publishedProducts],
-                        ["Active categories", overview.categories],
+                        ["Categories", overview.categories],
                         ["Wallet transactions", overview.transactions],
-                        ["Broadcast notifications", overview.broadcasts],
                         ["Orders", overview.orders],
                       ].map(([label, count]) => (
                         <article key={label} className="rounded-lg border border-border p-5">

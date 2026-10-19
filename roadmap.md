@@ -11,3 +11,5 @@
 - [ ] Complete three-part dashboard, shortcuts, contact page and remove obsolete achievement navigation.
 - [ ] Run rule tests and authenticated/mobile checks.
 - [ ] Repair missing admin schema definitions and verify the preview compiles.
+- [x] Verify the reported administrator sign-in error using the existing role system: admin redirect, page refresh and overview refresh pass in preview.
+- [ ] Restore remaining admin management setup and resolve release errors — blocked by invalid, protected pending migration 0004 (undeclared linked_orders variable).
