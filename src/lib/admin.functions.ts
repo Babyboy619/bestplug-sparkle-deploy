@@ -305,7 +305,7 @@ export const adminSetCategoryState = createServerFn({ method: "POST" })
     const { data: result, error } = await context.supabase.rpc("admin_set_category_state", {
       _category_id: data.categoryId,
       _action: data.action,
-      _reassign_to: data.reassignTo ?? undefined,
+      _reassign_to: (data.reassignTo ?? null) as string,
     });
     if (error || !result?.[0]) {
       if (error) console.error("Administrator category action failed:", error);
@@ -332,7 +332,7 @@ export const adminBroadcastNotification = createServerFn({ method: "POST" })
       _title: data.title,
       _message: data.message,
       _type: data.type,
-      _destination_url: data.destinationUrl || undefined,
+      _destination_url: (data.destinationUrl || null) as string,
     });
     if (error || !result?.[0]) {
       if (error) console.error("Administrator notification broadcast failed:", error);
