@@ -6,14 +6,10 @@ import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { markUserNotificationRead, userNotifications } from "@/lib/admin.functions";
+import { pageHead } from "@/lib/metadata";
 
 export const Route = createFileRoute("/notifications")({
-  head: () => ({
-    meta: [
-      { title: "Notifications | BESTPLUG MARKETPLACE" },
-      { name: "description", content: "View marketplace announcements and account notifications." },
-    ],
-  }),
+  head: () => pageHead("Notifications", "View BestPlug marketplace announcements and account notifications."),
   component: NotificationsPage,
 });
 

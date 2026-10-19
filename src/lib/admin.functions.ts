@@ -232,7 +232,6 @@ export const adminDashboardOverview = createServerFn({ method: "POST" })
       categories: categories.count ?? 0,
       orders: orders.count ?? 0,
       transactions: transactions.count ?? 0,
-      broadcasts: broadcasts.count ?? 0,
       recentOrders: recentOrders.data ?? [],
     };
   });
