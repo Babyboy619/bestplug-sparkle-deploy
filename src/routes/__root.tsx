@@ -119,6 +119,24 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  // After a new deploy, old cached pages may request chunks that no longer exist.
+  // Reload once to fetch the fresh version instead of showing a blank screen.
+  useEffect(() => {
+    const onPreloadError = (event: Event) => {
+      event.preventDefault();
+      const key = "bp-chunk-reload";
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      window.location.reload();
+    };
+    window.addEventListener("vite:preloadError", onPreloadError);
+    const clear = window.setTimeout(() => sessionStorage.removeItem("bp-chunk-reload"), 10000);
+    return () => {
+      window.removeEventListener("vite:preloadError", onPreloadError);
+      window.clearTimeout(clear);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
