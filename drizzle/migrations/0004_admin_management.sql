@@ -818,6 +818,7 @@ AS $$
 DECLARE
   actor uuid := auth.uid();
   current_product public.products;
+linked_orders bigint;
 BEGIN
   IF actor IS NULL OR NOT public.is_active_admin(actor) THEN RAISE EXCEPTION 'Forbidden: administrator access required'; END IF;
   SELECT * INTO current_product FROM public.products WHERE id = _product_id FOR UPDATE;
