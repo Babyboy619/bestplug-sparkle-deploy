@@ -26,7 +26,7 @@ function verificationErrorMessage(error: unknown): string {
       : null;
 
   if (code === "PGRST202") {
-    return "The administrator verification function is unavailable (PGRST202). Apply pending database migrations or refresh the Supabase schema cache, then retry.";
+    return "Administrator access could not be verified. Please retry or contact support.";
   }
 
   return code
@@ -97,8 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoleError(null);
     void (async () => {
       try {
-        const { data, error } = await supabase.rpc("is_active_admin", {
+        const { data, error } = await supabase.rpc("has_role", {
           _user_id: userId,
+          _role: "admin",
         });
         if (!active) return;
         if (error) {
@@ -106,7 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRoleError(verificationErrorMessage(error));
           setIsAdmin(false);
         } else {
-          setIsAdmin(data === true);
+          if (data !== true) return;
+          const profile = await supabase.from("profiles").select("suspended").eq("id", userId).maybeSingle();
+          if (!active) return;
+          if (profile.error) {
+            setRoleError(verificationErrorMessage(profile.error));
+          } else {
+            setIsAdmin(profile.data?.suspended === false);
+          }
         }
       } catch (error) {
         if (!active) return;

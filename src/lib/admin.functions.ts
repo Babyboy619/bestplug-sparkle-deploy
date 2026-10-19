@@ -6,7 +6,7 @@ import { isSafeInternalPath } from "@/lib/notification-url";
 import type { Database } from "@/integrations/supabase/types";
 
 const requireAdmin = async (supabase: SupabaseClient<Database>, userId: string) => {
-  const { data, error } = await supabase.rpc("is_active_admin", { _user_id: userId });
+  const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
   if (error) {
     console.error("Administrator authorization check failed:", error);
     throw new Error(
@@ -180,41 +180,29 @@ export const adminDashboardOverview = createServerFn({ method: "POST" })
       categories,
       orders,
       transactions,
-      broadcasts,
       recentOrders,
     ] = await Promise.all([
       context.supabase.from("profiles").select("id", { count: "exact", head: true }),
       context.supabase
         .from("profiles")
         .select("id", { count: "exact", head: true })
-        .eq("suspended", false)
-        .is("deleted_at", null),
+        .eq("suspended", false),
       context.supabase
         .from("profiles")
         .select("id", { count: "exact", head: true })
-        .eq("suspended", true)
-        .is("deleted_at", null),
+        .eq("suspended", true),
+      context.supabase
+        .from("products")
+        .select("id", { count: "exact", head: true }),
       context.supabase
         .from("products")
         .select("id", { count: "exact", head: true })
-        .is("archived_at", null),
-      context.supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("published", true)
-        .eq("product_status", "published")
-        .is("archived_at", null),
+        .eq("published", true),
       context.supabase
         .from("product_categories")
-        .select("id", { count: "exact", head: true })
-        .eq("is_active", true)
-        .is("deleted_at", null),
+        .select("id", { count: "exact", head: true }),
       context.supabase.from("orders").select("id", { count: "exact", head: true }),
       context.supabase.from("wallet_transactions").select("id", { count: "exact", head: true }),
-      context.supabase
-        .from("notification_broadcasts")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "sent"),
       context.supabase
         .from("orders")
         .select("id,total,status,created_at")
@@ -230,7 +218,6 @@ export const adminDashboardOverview = createServerFn({ method: "POST" })
       categories.error ??
       orders.error ??
       transactions.error ??
-      broadcasts.error ??
       recentOrders.error;
     if (queryError) {
       console.error("Administrator overview query failed:", queryError);
@@ -245,7 +232,6 @@ export const adminDashboardOverview = createServerFn({ method: "POST" })
       categories: categories.count ?? 0,
       orders: orders.count ?? 0,
       transactions: transactions.count ?? 0,
-      broadcasts: broadcasts.count ?? 0,
       recentOrders: recentOrders.data ?? [],
     };
   });
