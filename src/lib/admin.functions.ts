@@ -557,6 +557,7 @@ export const userUnreadNotificationCount = createServerFn({ method: "POST" })
 const productSearchSchema = z.object({
   search: z.string().trim().max(100).default(""),
   status: z.enum(["all", "draft", "published", "unavailable", "archived"]).default("all"),
+  categoryId: z.string().uuid().nullable().default(null),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(100).default(20),
 });
@@ -575,6 +576,7 @@ export const adminSearchProducts = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .range((data.page - 1) * data.pageSize, data.page * data.pageSize - 1);
     if (data.search) query = query.ilike("title", `%${data.search}%`);
+    if (data.categoryId) query = query.eq("category_id", data.categoryId);
     if (data.status === "archived") query = query.not("archived_at", "is", null);
     else {
       query = query.is("archived_at", null);

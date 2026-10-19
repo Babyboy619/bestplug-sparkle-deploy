@@ -89,6 +89,7 @@ export function AdminProducts() {
   const addInventory = useServerFn(adminAddProductInventory);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | ProductStatus | "archived">("all");
+  const [categoryId, setCategoryId] = useState("all");
   const [page, setPage] = useState(1);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [result, setResult] = useState<ProductResult | null>(null);
@@ -113,7 +114,15 @@ export function AdminProducts() {
     let active = true;
     setLoading(true);
     setError(null);
-    void searchProducts({ data: { search, status, page, pageSize: 20 } })
+    void searchProducts({
+      data: {
+        search,
+        status,
+        categoryId: categoryId === "all" ? null : categoryId,
+        page,
+        pageSize: 20,
+      },
+    })
       .then((next) => {
         if (active) setResult(next);
       })
@@ -128,7 +137,7 @@ export function AdminProducts() {
     return () => {
       active = false;
     };
-  }, [search, status, page, refreshIndex, searchProducts]);
+  }, [search, status, categoryId, page, refreshIndex, searchProducts]);
 
   useEffect(() => {
     if (!activityProduct) return;
@@ -329,7 +338,7 @@ export function AdminProducts() {
         </Button>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Input
           aria-label="Search products by name"
           placeholder="Search product name"
@@ -354,6 +363,25 @@ export function AdminProducts() {
             <option value="published">Published</option>
             <option value="unavailable">Unavailable</option>
             <option value="archived">Archived</option>
+          </select>
+        </label>
+        <label className="text-sm">
+          Product category
+          <select
+            className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3"
+            value={categoryId}
+            onChange={(event) => {
+              setCategoryId(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="all">All categories</option>
+            {result?.categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+                {!category.is_active || category.deleted_at ? " (inactive)" : ""}
+              </option>
+            ))}
           </select>
         </label>
       </div>
