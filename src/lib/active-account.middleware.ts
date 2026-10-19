@@ -6,13 +6,15 @@ export const requireActiveAccount = createMiddleware({ type: "function" })
   .server(async ({ next, context }) => {
     const { data, error } = await context.supabase
       .from("profiles")
-      .select("id,suspended")
+      .select("id,suspended,deleted_at")
       .eq("id", context.userId)
       .maybeSingle();
     if (error) {
       console.error("Account status verification failed:", error);
       throw new Error("Account status could not be verified.");
     }
-    if (!data || data.suspended) throw new Error("This account is suspended or deactivated.");
+    if (!data || data.suspended || data.deleted_at) {
+      throw new Error("This account is suspended or deactivated.");
+    }
     return next();
   });

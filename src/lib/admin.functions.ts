@@ -6,7 +6,7 @@ import { isSafeInternalPath } from "@/lib/notification-url";
 import type { Database } from "@/integrations/supabase/types";
 
 const requireAdmin = async (supabase: SupabaseClient<Database>, userId: string) => {
-  const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  const { data, error } = await supabase.rpc("is_active_admin", { _user_id: userId });
   if (error) {
     console.error("Administrator authorization check failed:", error);
     throw new Error(

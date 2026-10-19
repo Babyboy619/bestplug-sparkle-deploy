@@ -14,9 +14,15 @@ export const accountData = createServerFn({ method: "POST" })
         .select("display_name,avatar_url,email")
         .eq("id", context.userId)
         .single(),
-      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
+      context.supabase.rpc("is_active_admin", { _user_id: context.userId }),
       context.supabase.from("wallets").select("balance").eq("user_id", context.userId).single(),
     ]);
+    if (role.error) {
+      console.error("Administrator role verification failed:", role.error);
+      throw new Error(
+        `Administrator verification failed with database error ${role.error.code ?? "unknown"}.`,
+      );
+    }
     return {
       profile: profile.data,
       isAdmin: role.data === true,
@@ -109,11 +115,16 @@ export const changePassword = createServerFn({ method: "POST" })
 export const adminData = createServerFn({ method: "POST" })
   .middleware([requireActiveAccount])
   .handler(async ({ context }) => {
-    const { data: allowed, error } = await context.supabase.rpc("has_role", {
+    const { data: allowed, error } = await context.supabase.rpc("is_active_admin", {
       _user_id: context.userId,
-      _role: "admin",
     });
-    if (error || !allowed) throw new Error("Forbidden: administrator access required");
+    if (error) {
+      console.error("Administrator authorization check failed:", error);
+      throw new Error(
+        `Administrator authorization could not be checked (database error ${error.code ?? "unknown"}).`,
+      );
+    }
+    if (allowed !== true) throw new Error("Forbidden: administrator access required");
     const [products, orders, profiles] = await Promise.all([
       context.supabase
         .from("products")

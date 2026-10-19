@@ -398,31 +398,37 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          deleted_at: string | null
           display_name: string | null
           email: string | null
           id: string
           phone: string | null
           suspended: boolean
+          suspension_reason: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string | null
           email?: string | null
           id: string
           phone?: string | null
           suspended?: boolean
+          suspension_reason?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string | null
           email?: string | null
           id?: string
           phone?: string | null
           suspended?: boolean
+          suspension_reason?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -640,6 +646,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      is_active_admin: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       ensure_user_wallet: {
         Args: never
         Returns: {

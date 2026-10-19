@@ -85,11 +85,14 @@ BEGIN
 END $$;
 ```
 
-The `0007_restore_active_admin_rpc.sql` migration reinstalls the
-`public.is_active_admin(uuid)` RPC used by frontend administrator verification,
-restricts execution to authenticated/service roles, and requests a PostgREST
-schema-cache reload. If applying SQL manually instead of using the migration
-runner, execute that migration in the intended Supabase project's SQL Editor.
+The `0008_repair_admin_authentication.sql` migration reinstalls the
+`public.is_active_admin(uuid)` RPC used by the frontend and server-side admin
+authorization, restricts execution to authenticated/service roles, safely
+assigns the `admin` role to the one existing verified
+`bestplugmarketplace@gmail.com` Auth account (if present), and requests a
+PostgREST schema-cache reload. If applying SQL manually instead of using the
+migration runner, execute that migration in the intended Supabase project's SQL
+Editor.
 You can confirm the installed signature with:
 
 ```sql
@@ -106,7 +109,9 @@ The expected signature is `_user_id uuid` returning `boolean`. Then verify the
 RPC from the deployed app while authenticated as an administrator. If it still
 returns `PGRST202`, confirm `public` is included in the Supabase project's
 exposed API schemas and run `NOTIFY pgrst, 'reload schema';` using an authorized
-database connection.
+database connection. Migration 0008 does not create or alter an Auth account or
+its password; if the account was not verified when it ran, verify the existing
+account and rerun the migration or the targeted role-assignment SQL above.
 
 This operation grants the role only to the matching existing Auth UUID. It
 does not create an Auth account or allow users to change their own role.
