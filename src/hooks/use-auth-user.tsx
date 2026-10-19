@@ -25,12 +25,8 @@ function verificationErrorMessage(error: unknown): string {
       ? error.code
       : null;
 
-  if (code === "PGRST202") {
-    return "The administrator verification function is unavailable (PGRST202). Apply database migration 0008 and refresh the Supabase schema cache, then retry.";
-  }
-
   return code
-    ? `Administrator verification failed with database error ${code}. Retry or contact support if the problem continues.`
+    ? `Administrator verification could not be completed (database error ${code}). Retry or contact support if the problem continues.`
     : "Administrator verification failed because the server could not check this session. Retry or contact support if the problem continues.";
 }
 
@@ -97,16 +93,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoleError(null);
     void (async () => {
       try {
-        const { data, error } = await supabase.rpc("is_active_admin", {
-          _user_id: userId,
-        });
+        const [roleResult, profileResult] = await Promise.all([
+          supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+          supabase.from("profiles").select("id,suspended").eq("id", userId).maybeSingle(),
+        ]);
         if (!active) return;
+        const error = roleResult.error ?? profileResult.error;
         if (error) {
           console.error("Administrator role verification failed:", error);
           setRoleError(verificationErrorMessage(error));
           setIsAdmin(false);
         } else {
-          setIsAdmin(data === true);
+          setIsAdmin(
+            roleResult.data === true &&
+              profileResult.data !== null &&
+              !profileResult.data.suspended,
+          );
         }
       } catch (error) {
         if (!active) return;
