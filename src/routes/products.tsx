@@ -53,9 +53,7 @@ function ProductListingPage() {
         .order("name"),
       supabase
         .from("products")
-        .select(
-          "id,category_id,title,slug,description,price,currency,stock,image_url,product_status",
-        )
+        .select("id,category_id,title,slug,description,price,currency,stock,product_status")
         .eq("published", true)
         .order("created_at", { ascending: false }),
     ]).then(([categoryResult, productResult]) => {

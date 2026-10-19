@@ -194,16 +194,12 @@ export const adminDashboardOverview = createServerFn({ method: "POST" })
         .from("profiles")
         .select("id", { count: "exact", head: true })
         .eq("suspended", true),
-      context.supabase
-        .from("products")
-        .select("id", { count: "exact", head: true }),
+      context.supabase.from("products").select("id", { count: "exact", head: true }),
       context.supabase
         .from("products")
         .select("id", { count: "exact", head: true })
         .eq("published", true),
-      context.supabase
-        .from("product_categories")
-        .select("id", { count: "exact", head: true }),
+      context.supabase.from("product_categories").select("id", { count: "exact", head: true }),
       context.supabase.from("orders").select("id", { count: "exact", head: true }),
       context.supabase.from("wallet_transactions").select("id", { count: "exact", head: true }),
       context.supabase
@@ -559,7 +555,7 @@ export const adminSearchProducts = createServerFn({ method: "POST" })
     let query = context.supabase
       .from("products")
       .select(
-        "id,title,slug,category_id,description,price,currency,stock,image_url,published,product_status,metadata,created_at,updated_at,archived_at,product_categories(name)",
+        "id,title,slug,category_id,description,price,currency,stock,published,product_status,metadata,created_at,updated_at,archived_at,product_categories(name)",
         { count: "exact" },
       )
       .order("created_at", { ascending: false })
@@ -622,14 +618,6 @@ const productInputSchema = z.object({
     .max(100000000)
     .refine((price) => Math.abs(price * 100 - Math.round(price * 100)) < 1e-7),
   stock: z.number().int().min(0).max(1000000),
-  imageUrl: z.union([
-    z
-      .string()
-      .url()
-      .max(2048)
-      .refine((url) => /^https?:\/\//i.test(url)),
-    z.literal(""),
-  ]),
   status: z.enum(["draft", "published", "unavailable"]),
   specifications: z
     .record(z.string(), z.string().trim().max(500))
@@ -654,10 +642,11 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
         .replace(/^-|-$/g, "")
         .slice(0, 140) || "product";
     let slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
+    let imageUrl: string | null = null;
     if (data.id) {
       const { data: existing, error: lookupError } = await context.supabase
         .from("products")
-        .select("slug")
+        .select("slug,image_url")
         .eq("id", data.id)
         .maybeSingle();
       if (lookupError || !existing) {
@@ -665,6 +654,7 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
         throw new Error("Product could not be found.");
       }
       slug = existing.slug;
+      imageUrl = existing.image_url;
     }
     const { data: id, error } = await context.supabase.rpc("admin_save_product", {
       _product_id: data.id as string,
@@ -674,7 +664,7 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
       _description: data.description,
       _price: data.price,
       _stock: data.stock,
-      _image_url: (data.imageUrl || null) as string,
+      _image_url: imageUrl as string,
       _status: data.status,
       _metadata: {
         specifications: data.specifications,

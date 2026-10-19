@@ -47,7 +47,7 @@ export function SavedProductsPage({ mode }: { mode: Mode }) {
     }
     const { data, error: productError } = await supabase
       .from("products")
-      .select("id,title,slug,description,price,currency,stock,image_url,product_status")
+      .select("id,title,slug,description,price,currency,stock,product_status")
       .in("id", ids)
       .eq("published", true);
     if (productError) {

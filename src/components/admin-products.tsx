@@ -32,7 +32,6 @@ type ProductForm = {
   description: string;
   price: string;
   stock: string;
-  imageUrl: string;
   status: ProductStatus;
   specifications: string;
   deliveryInstructions: string;
@@ -45,7 +44,6 @@ const emptyForm: ProductForm = {
   description: "",
   price: "",
   stock: "0",
-  imageUrl: "",
   status: "draft",
   specifications: "",
   deliveryInstructions: "",
@@ -109,6 +107,7 @@ export function AdminProducts() {
   const [inventoryBusy, setInventoryBusy] = useState(false);
   const [inventoryReference, setInventoryReference] = useState<string | null>(null);
   const [inventoryConfirmationOpen, setInventoryConfirmationOpen] = useState(false);
+  const [inventoryReturnForm, setInventoryReturnForm] = useState<ProductForm | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -170,7 +169,6 @@ export function AdminProducts() {
       description: product.description ?? "",
       price: String(product.price),
       stock: String(product.stock),
-      imageUrl: product.image_url ?? "",
       status: product.product_status,
       specifications: Object.entries(metadata.specifications)
         .map(([key, value]) => `${key}: ${value}`)
@@ -215,16 +213,6 @@ export function AdminProducts() {
       setFormError("Enter a positive NGN price and a non-negative whole-number stock quantity.");
       return;
     }
-    if (form.imageUrl) {
-      try {
-        const parsed = new URL(form.imageUrl);
-        if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
-      } catch {
-        setFormError("Product images must use an HTTP or HTTPS URL.");
-        return;
-      }
-    }
-
     setFormBusy(true);
     setFormError(null);
     try {
@@ -236,7 +224,6 @@ export function AdminProducts() {
           description: form.description,
           price,
           stock,
-          imageUrl: form.imageUrl,
           status: form.status,
           specifications: specs,
           deliveryInstructions: form.deliveryInstructions,
@@ -246,7 +233,14 @@ export function AdminProducts() {
       setForm(null);
       setRefreshIndex((value) => value + 1);
     } catch (cause) {
-      setFormError(cause instanceof Error ? cause.message : "Product could not be saved.");
+      const message = cause instanceof Error ? cause.message : "Product could not be saved.";
+      setFormError(
+        message.includes("Add delivery inventory before increasing sellable stock")
+          ? "Sellable stock must be backed by available delivery records. Add records from Manage delivery inventory; each record increases stock automatically. New products must be saved with 0 stock first."
+          : message.includes("A published product needs available delivery inventory")
+            ? "A product can be published only after every sellable item has a delivery record. Save it as Draft with 0 stock, add delivery inventory, then edit and publish it."
+            : message,
+      );
     } finally {
       setFormBusy(false);
     }
@@ -272,7 +266,8 @@ export function AdminProducts() {
     }
   }
 
-  async function openInventory(product: AdminProduct) {
+  async function openInventory(product: AdminProduct, returnToForm: ProductForm | null = null) {
+    setInventoryReturnForm(returnToForm);
     setInventoryProduct(product);
     setInventoryContent("");
     setInventoryReference(null);
@@ -302,6 +297,8 @@ export function AdminProducts() {
       });
       setInventoryCount((value) => (value ?? 0) + 1);
       setInventoryProduct({ ...inventoryProduct, stock: result.stock });
+      setInventoryReturnForm((draft) => (draft ? { ...draft, stock: String(result.stock) } : null));
+      setFormError(null);
       setInventoryContent("");
       setInventoryReference(null);
       setInventoryConfirmationOpen(false);
@@ -314,6 +311,16 @@ export function AdminProducts() {
     } finally {
       setInventoryBusy(false);
     }
+  }
+
+  function closeInventory() {
+    setInventoryProduct(null);
+    setInventoryCount(null);
+    if (inventoryReturnForm) {
+      setForm(inventoryReturnForm);
+      setFormError(null);
+    }
+    setInventoryReturnForm(null);
   }
 
   return (
@@ -511,8 +518,8 @@ export function AdminProducts() {
           <DialogHeader>
             <DialogTitle>{form?.id ? "Edit product" : "Create product"}</DialogTitle>
             <DialogDescription>
-              Product details are saved to the marketplace database. Image URLs must be HTTP or
-              HTTPS.
+              Product details are saved to the marketplace database. Sellable stock must be backed
+              by secure delivery records.
             </DialogDescription>
           </DialogHeader>
           {form && (
@@ -602,17 +609,27 @@ export function AdminProducts() {
                   />
                 </label>
               </div>
-              <label className="block text-sm">
-                Product image URL
-                <Input
-                  className="mt-1"
-                  type="url"
-                  maxLength={2048}
-                  placeholder="https://…"
-                  value={form.imageUrl}
-                  onChange={(event) => setForm({ ...form, imageUrl: event.target.value })}
-                />
-              </label>
+              <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                {form.id
+                  ? "To increase stock, add one delivery record per item. Each secure record updates sellable stock automatically."
+                  : "Create new products with 0 stock, then add delivery records from the product list. Each secure record updates sellable stock automatically."}
+                {form.id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 block"
+                    onClick={() => {
+                      const product = result?.products.find((item) => item.id === form.id);
+                      if (!product) return;
+                      setForm(null);
+                      void openInventory(product, form);
+                    }}
+                  >
+                    Manage delivery inventory
+                  </Button>
+                )}
+              </div>
               <label className="block text-sm">
                 Specifications{" "}
                 <span className="text-muted-foreground">(one per line: Name: value)</span>
@@ -752,10 +769,7 @@ export function AdminProducts() {
       <Dialog
         open={Boolean(inventoryProduct)}
         onOpenChange={(open) => {
-          if (!open && !inventoryBusy) {
-            setInventoryProduct(null);
-            setInventoryCount(null);
-          }
+          if (!open && !inventoryBusy) closeInventory();
         }}
       >
         <DialogContent>
@@ -791,9 +805,9 @@ export function AdminProducts() {
               type="button"
               variant="outline"
               disabled={inventoryBusy}
-              onClick={() => setInventoryProduct(null)}
+              onClick={closeInventory}
             >
-              Cancel
+              {inventoryReturnForm ? "Return to product form" : "Cancel"}
             </Button>
             <Button
               type="button"
