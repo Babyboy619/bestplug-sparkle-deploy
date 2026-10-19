@@ -49,6 +49,52 @@ export type Database = {
           },
         ]
       }
+      admin_inventory_requests: {
+        Row: {
+          actor_id: string
+          created_at: string
+          credential_id: string
+          product_id: string
+          reference: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          credential_id: string
+          product_id: string
+          reference: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          credential_id?: string
+          product_id?: string
+          reference?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_inventory_requests_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_inventory_requests_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "product_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_inventory_requests_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           product_id: string
@@ -78,6 +124,89 @@ export type Database = {
           },
           {
             foreignKeyName: "cart_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_broadcasts: {
+        Row: {
+          created_at: string
+          created_by: string
+          destination_url: string | null
+          id: string
+          message: string
+          notification_type: string
+          recipient_count: number
+          reference: string
+          sent_at: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          destination_url?: string | null
+          id?: string
+          message: string
+          notification_type: string
+          recipient_count?: number
+          reference: string
+          sent_at?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          destination_url?: string | null
+          id?: string
+          message?: string
+          notification_type?: string
+          recipient_count?: number
+          reference?: string
+          sent_at?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_broadcasts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_reads: {
+        Row: {
+          notification_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          notification_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          notification_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_reads_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notification_broadcasts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_reads_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -247,22 +376,34 @@ export type Database = {
       product_categories: {
         Row: {
           created_at: string
+          deleted_at: string | null
           description: string | null
+          display_order: number
           id: string
+          image_url: string | null
+          is_active: boolean
           name: string
           slug: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
+          display_order?: number
           id?: string
+          image_url?: string | null
+          is_active?: boolean
           name: string
           slug: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
+          display_order?: number
           id?: string
+          image_url?: string | null
+          is_active?: boolean
           name?: string
           slug?: string
         }
@@ -340,6 +481,7 @@ export type Database = {
       }
       products: {
         Row: {
+          archived_at: string | null
           category_id: string | null
           created_at: string
           currency: string
@@ -348,6 +490,7 @@ export type Database = {
           image_url: string | null
           metadata: Json
           price: number
+          product_status: Database["public"]["Enums"]["product_status"]
           published: boolean
           slug: string
           stock: number
@@ -355,6 +498,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           category_id?: string | null
           created_at?: string
           currency?: string
@@ -363,6 +507,7 @@ export type Database = {
           image_url?: string | null
           metadata?: Json
           price: number
+          product_status?: Database["public"]["Enums"]["product_status"]
           published?: boolean
           slug: string
           stock?: number
@@ -370,6 +515,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           category_id?: string | null
           created_at?: string
           currency?: string
@@ -378,6 +524,7 @@ export type Database = {
           image_url?: string | null
           metadata?: Json
           price?: number
+          product_status?: Database["public"]["Enums"]["product_status"]
           published?: boolean
           slug?: string
           stock?: number
@@ -398,31 +545,37 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          deleted_at: string | null
           display_name: string | null
           email: string | null
           id: string
           phone: string | null
           suspended: boolean
+          suspension_reason: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string | null
           email?: string | null
           id: string
           phone?: string | null
           suspended?: boolean
+          suspension_reason?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string | null
           email?: string | null
           id?: string
           phone?: string | null
           suspended?: boolean
+          suspension_reason?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -640,6 +793,127 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_add_product_credential: {
+        Args: { _content: string; _product_id: string; _reference: string }
+        Returns: number
+      }
+      admin_adjust_wallet: {
+        Args: {
+          _action: string
+          _amount: number
+          _reason: string
+          _reference: string
+          _user_id: string
+        }
+        Returns: {
+          new_balance: number
+          previous_balance: number
+          reference: string
+          transaction_id: string
+        }[]
+      }
+      admin_archive_product: {
+        Args: { _archived: boolean; _product_id: string }
+        Returns: boolean
+      }
+      admin_broadcast_notification: {
+        Args: {
+          _destination_url?: string
+          _message: string
+          _reference: string
+          _title: string
+          _type: string
+        }
+        Returns: {
+          created_at: string
+          notification_id: string
+          recipient_count: number
+          status: string
+        }[]
+      }
+      admin_inventory_count: { Args: { _product_id: string }; Returns: number }
+      admin_product_order_counts: {
+        Args: { _product_ids: string[] }
+        Returns: {
+          order_count: number
+          product_id: string
+        }[]
+      }
+      admin_save_category: {
+        Args: {
+          _category_id: string
+          _description: string
+          _display_order: number
+          _image_url: string
+          _name: string
+          _slug: string
+        }
+        Returns: string
+      }
+      admin_save_product: {
+        Args: {
+          _category_id: string
+          _description: string
+          _image_url: string
+          _metadata: Json
+          _price: number
+          _product_id: string
+          _slug: string
+          _status: Database["public"]["Enums"]["product_status"]
+          _stock: number
+          _title: string
+        }
+        Returns: string
+      }
+      admin_search_categories: {
+        Args: never
+        Returns: {
+          created_at: string
+          deleted_at: string
+          description: string
+          display_order: number
+          id: string
+          image_url: string
+          is_active: boolean
+          name: string
+          product_count: number
+          slug: string
+        }[]
+      }
+      admin_search_users: {
+        Args: {
+          _page: number
+          _page_size: number
+          _role: string
+          _search: string
+          _status: string
+        }
+        Returns: {
+          balance: number
+          created_at: string
+          deleted_at: string
+          display_name: string
+          email: string
+          id: string
+          phone: string
+          role: Database["public"]["Enums"]["app_role"]
+          suspended: boolean
+          suspension_reason: string
+          total_count: number
+        }[]
+      }
+      admin_set_category_state: {
+        Args: { _action: string; _category_id: string; _reassign_to?: string }
+        Returns: {
+          changed: boolean
+          reassigned_products: number
+        }[]
+      }
+      admin_set_user_state: {
+        Args: { _action: string; _reason?: string; _user_id: string }
+        Returns: boolean
+      }
+      count_unread_notifications: { Args: never; Returns: number }
       ensure_user_wallet: {
         Args: never
         Returns: {
@@ -655,6 +929,12 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_account_active: { Args: { _user_id: string }; Returns: boolean }
+      is_active_admin: { Args: { _user_id: string }; Returns: boolean }
+      mark_notification_read: {
+        Args: { _notification_id: string }
         Returns: boolean
       }
       prepare_cart_order: {
@@ -687,6 +967,19 @@ export type Database = {
         }
         Returns: string
       }
+      user_notification_feed: {
+        Args: { _page?: number; _page_size?: number }
+        Returns: {
+          created_at: string
+          destination_url: string
+          id: string
+          message: string
+          notification_type: string
+          read_at: string
+          title: string
+          total_count: number
+        }[]
+      }
     }
     Enums: {
       app_role: "user" | "admin"
@@ -697,6 +990,7 @@ export type Database = {
         | "failed"
         | "refunded"
       payment_provider: "neurapay" | "manual" | "paystack"
+      product_status: "draft" | "published" | "unavailable"
       tx_status: "pending" | "success" | "failed" | "reversed"
       tx_type: "credit" | "debit"
     }
@@ -835,6 +1129,7 @@ export const Constants = {
         "refunded",
       ],
       payment_provider: ["neurapay", "manual", "paystack"],
+      product_status: ["draft", "published", "unavailable"],
       tx_status: ["pending", "success", "failed", "reversed"],
       tx_type: ["credit", "debit"],
     },
