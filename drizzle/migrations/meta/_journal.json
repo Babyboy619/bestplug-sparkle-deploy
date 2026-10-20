@@ -71,6 +71,13 @@
       "when": 1792397721856,
       "tag": "0009_reload_schema_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792463662951,
+      "tag": "0010_relax_product_stock_rule",
+      "breakpoints": true
     }
   ]
 }
