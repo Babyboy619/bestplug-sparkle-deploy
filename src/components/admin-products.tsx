@@ -518,8 +518,7 @@ export function AdminProducts() {
           <DialogHeader>
             <DialogTitle>{form?.id ? "Edit product" : "Create product"}</DialogTitle>
             <DialogDescription>
-              Product details are saved to the marketplace database. Sellable stock must be backed
-              by secure delivery records.
+              Product details are saved to the marketplace database. No image is required.
             </DialogDescription>
           </DialogHeader>
           {form && (
@@ -610,9 +609,7 @@ export function AdminProducts() {
                 </label>
               </div>
               <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                {form.id
-                  ? "To increase stock, add one delivery record per item. Each secure record updates sellable stock automatically."
-                  : "Create new products with 0 stock, then add delivery records from the product list. Each secure record updates sellable stock automatically."}
+                Set any stock amount. Optionally add delivery records so buyers receive details instantly.
                 {form.id && (
                   <Button
                     type="button"
