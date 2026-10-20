@@ -53,23 +53,29 @@ export type Database = {
         Row: {
           actor_id: string
           created_at: string
-          credential_id: string
+          credential_id: string | null
+          fingerprint: string | null
           product_id: string
           reference: string
+          saved_count: number
         }
         Insert: {
           actor_id: string
           created_at?: string
-          credential_id: string
+          credential_id: string | null
+          fingerprint?: string | null
           product_id: string
           reference: string
+          saved_count?: number
         }
         Update: {
           actor_id?: string
           created_at?: string
-          credential_id?: string
+          credential_id?: string | null
+          fingerprint?: string | null
           product_id?: string
           reference?: string
+          saved_count?: number
         }
         Relationships: [
           {
@@ -218,8 +224,11 @@ export type Database = {
         Row: {
           created_at: string
           delivered_payload: string | null
+          delivered_specifications: Json
+          delivery_instructions: string
           id: string
           order_id: string
+          platform: string | null
           product_id: string | null
           quantity: number
           title: string
@@ -228,8 +237,11 @@ export type Database = {
         Insert: {
           created_at?: string
           delivered_payload?: string | null
+          delivered_specifications?: Json
+          delivery_instructions?: string
           id?: string
           order_id: string
+          platform?: string | null
           product_id?: string | null
           quantity?: number
           title: string
@@ -238,8 +250,11 @@ export type Database = {
         Update: {
           created_at?: string
           delivered_payload?: string | null
+          delivered_specifications?: Json
+          delivery_instructions?: string
           id?: string
           order_id?: string
+          platform?: string | null
           product_id?: string | null
           quantity?: number
           title?: string
@@ -415,6 +430,7 @@ export type Database = {
           content: string
           created_at: string
           delivered_at: string | null
+          delivery_instructions: string
           email: string | null
           email_password: string | null
           id: string
@@ -422,6 +438,7 @@ export type Database = {
           order_id: string | null
           password: string | null
           product_id: string
+          specifications: Json
           two_factor: string | null
           username: string | null
         }
@@ -430,6 +447,7 @@ export type Database = {
           content: string
           created_at?: string
           delivered_at?: string | null
+          delivery_instructions?: string
           email?: string | null
           email_password?: string | null
           id?: string
@@ -437,6 +455,7 @@ export type Database = {
           order_id?: string | null
           password?: string | null
           product_id: string
+          specifications?: Json
           two_factor?: string | null
           username?: string | null
         }
@@ -445,6 +464,7 @@ export type Database = {
           content?: string
           created_at?: string
           delivered_at?: string | null
+          delivery_instructions?: string
           email?: string | null
           email_password?: string | null
           id?: string
@@ -452,6 +472,7 @@ export type Database = {
           order_id?: string | null
           password?: string | null
           product_id?: string
+          specifications?: Json
           two_factor?: string | null
           username?: string | null
         }
@@ -832,6 +853,19 @@ export type Database = {
         }[]
       }
       admin_inventory_count: { Args: { _product_id: string }; Returns: number }
+      admin_inventory_summary: { Args: { _product_id: string }; Returns: Json }
+      admin_list_available_inventory: {
+        Args: { _product_id: string }
+        Returns: {
+          created_at: string
+          content: string
+          delivery_instructions: string
+          id: string
+          password: string | null
+          specifications: Json
+          username: string | null
+        }[]
+      }
       admin_product_order_counts: {
         Args: { _product_ids: string[] }
         Returns: {
@@ -864,6 +898,31 @@ export type Database = {
           _title: string
         }
         Returns: string
+      }
+      admin_save_product_with_inventory: {
+        Args: {
+          _category_id: string | null
+          _description: string | null
+          _inventory: Json
+          _metadata: Json
+          _price: number
+          _product_id: string | null
+          _reference: string
+          _slug: string
+          _status: Database["public"]["Enums"]["product_status"]
+          _title: string
+        }
+        Returns: Json
+      }
+      admin_update_available_inventory: {
+        Args: {
+          _credential_id: string
+          _delivery_instructions: string
+          _password: string
+          _specifications: Json
+          _username: string
+        }
+        Returns: boolean
       }
       admin_search_categories: {
         Args: never
@@ -942,6 +1001,10 @@ export type Database = {
         Returns: string
       }
       purchase_cart: { Args: { _request: string }; Returns: string }
+      purchase_product_with_wallet: {
+        Args: { _product_id: string; _request: string }
+        Returns: Json
+      }
       purchase_with_wallet: {
         Args: { _product_id: string; _quantity: number }
         Returns: string
@@ -983,12 +1046,7 @@ export type Database = {
     }
     Enums: {
       app_role: "user" | "admin"
-      order_status:
-        | "pending"
-        | "completed"
-        | "pending_credentials"
-        | "failed"
-        | "refunded"
+      order_status: "pending" | "completed" | "pending_credentials" | "failed" | "refunded"
       payment_provider: "neurapay" | "manual" | "paystack"
       product_status: "draft" | "published" | "unavailable"
       tx_status: "pending" | "success" | "failed" | "reversed"
@@ -1023,10 +1081,8 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1035,8 +1091,7 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -1060,8 +1115,7 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -1085,8 +1139,7 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -1102,8 +1155,7 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -1121,13 +1173,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["user", "admin"],
-      order_status: [
-        "pending",
-        "completed",
-        "pending_credentials",
-        "failed",
-        "refunded",
-      ],
+      order_status: ["pending", "completed", "pending_credentials", "failed", "refunded"],
       payment_provider: ["neurapay", "manual", "paystack"],
       product_status: ["draft", "published", "unavailable"],
       tx_status: ["pending", "success", "failed", "reversed"],

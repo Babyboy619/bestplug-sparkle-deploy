@@ -24,8 +24,9 @@ const product = {
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
   save: vi.fn(),
-  inventoryCount: vi.fn(),
-  addInventory: vi.fn(),
+  inventorySummary: vi.fn(),
+  listAvailableInventory: vi.fn(),
+  updateAvailableInventory: vi.fn(),
   archive: vi.fn(),
   activity: vi.fn(),
 }));
@@ -33,10 +34,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-start", () => ({ useServerFn: (serverFn: unknown) => serverFn }));
 
 vi.mock("@/lib/admin.functions", () => ({
-  adminAddProductInventory: mocks.addInventory,
   adminArchiveProduct: mocks.archive,
   adminProductActivity: mocks.activity,
-  adminProductInventoryCount: mocks.inventoryCount,
+  adminProductInventorySummary: mocks.inventorySummary,
+  adminListAvailableInventory: mocks.listAvailableInventory,
+  adminUpdateAvailableInventory: mocks.updateAvailableInventory,
   adminSaveProduct: mocks.save,
   adminSearchProducts: mocks.search,
 }));
@@ -49,65 +51,149 @@ describe("admin product editing", () => {
   beforeEach(() => {
     mocks.search.mockReset().mockResolvedValue(result([product]));
     mocks.save.mockReset().mockResolvedValue({ id: product.id });
-    mocks.inventoryCount.mockReset().mockResolvedValue(1);
-    mocks.addInventory.mockReset().mockResolvedValue({ stock: 2 });
+    mocks.inventorySummary.mockReset().mockResolvedValue({
+      total: 1,
+      available: 1,
+      sold: 0,
+      reserved: 0,
+      newlyAdded: 1,
+    });
+    mocks.listAvailableInventory.mockReset().mockResolvedValue([]);
+    mocks.updateAvailableInventory.mockReset().mockResolvedValue({ updated: true });
     mocks.archive.mockReset();
     mocks.activity.mockReset();
   });
 
-  it("saves product fields without an image URL", async () => {
+  it("saves product fields without an image URL or manual stock", async () => {
     render(<AdminProducts />);
     fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
 
     expect(screen.queryByLabelText("Product image URL")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Sellable stock")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Product name"), {
       target: { value: "Starter account updated" },
+    });
+    fireEvent.change(screen.getByLabelText("Description"), {
+      target: { value: "Updated description" },
+    });
+    fireEvent.change(screen.getByLabelText("Price (NGN)"), {
+      target: { value: "2700" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save product" }));
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
     expect(mocks.save.mock.calls[0]?.[0]).toEqual({
       data: {
+        reference: expect.any(String),
         id: product.id,
         title: "Starter account updated",
         categoryId: null,
-        description: "",
-        price: 2500,
-        stock: 1,
+        description: "Updated description",
+        price: 2700,
         status: "draft",
         specifications: {},
         deliveryInstructions: "",
+        inventory: [],
       },
     });
   });
 
-  it("adds secure inventory to resolve stock validation and updates the edit form", async () => {
-    mocks.save
-      .mockRejectedValueOnce(new Error("Add delivery inventory before increasing sellable stock"))
-      .mockResolvedValueOnce({ id: product.id });
+  it("creates a product with ten inventory entries", async () => {
+    mocks.save.mockResolvedValueOnce({ id: product.id, stock: 10, savedCount: 10 });
+    render(<AdminProducts />);
+    fireEvent.click(screen.getByRole("button", { name: "Create product" }));
+    fireEvent.change(screen.getByLabelText("Product name"), {
+      target: { value: "Ten-log product" },
+    });
+    fireEvent.change(screen.getByLabelText("Price (NGN)"), {
+      target: { value: "1500" },
+    });
+    for (let index = 0; index < 10; index += 1) {
+      fireEvent.click(screen.getByRole("button", { name: "Add Another Log" }));
+    }
+    const usernames = screen.getAllByLabelText("ID or username");
+    const passwords = screen.getAllByLabelText("Password");
+    for (let index = 0; index < 10; index += 1) {
+      fireEvent.change(usernames[index]!, { target: { value: `account-${index}` } });
+      fireEvent.change(passwords[index]!, {
+        target: { value: index === 0 ? "line1\nline2!" : `special: | value-${index}` },
+      });
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Save product" }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    const submitted = mocks.save.mock.calls[0]?.[0].data;
+    expect(submitted.id).toBeNull();
+    expect(submitted.inventory).toHaveLength(10);
+    expect(submitted.inventory[0]).toMatchObject({
+      username: "account-0",
+      password: "line1\nline2!",
+    });
+    expect(submitted.inventory[9]).toMatchObject({
+      username: "account-9",
+      password: "special: | value-9",
+    });
+    expect(
+      screen.queryByText("Add delivery inventory before increasing sellable stock"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("previews and submits twenty valid bulk records", async () => {
+    mocks.save.mockResolvedValueOnce({ id: product.id, stock: 20, savedCount: 20 });
     render(<AdminProducts />);
     fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
-    fireEvent.change(screen.getByLabelText("Sellable stock"), { target: { value: "2" } });
+    const content = Array.from(
+      { length: 20 },
+      (_, index) => `ID: account-${index} | Password: pass-${index}`,
+    ).join("\n");
+    fireEvent.change(screen.getByLabelText(/Paste one record per line/), {
+      target: { value: content },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Preview records" }));
+    expect(screen.getByText(/20 records detected · 20 valid records/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save product" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Sellable stock must be backed by available delivery records.",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Manage delivery inventory" }));
-    fireEvent.change(await screen.findByLabelText("One delivery record"), {
-      target: { value: "secure-delivery-payload" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Review secure record" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Add record" }));
-    await waitFor(() => expect(mocks.addInventory).toHaveBeenCalledTimes(1));
-    expect(mocks.addInventory.mock.calls[0]?.[0]).toMatchObject({
-      data: { productId: product.id, content: "secure-delivery-payload" },
-    });
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    expect(mocks.save.mock.calls[0]?.[0].data.inventory).toHaveLength(20);
+  });
 
-    fireEvent.click(await screen.findByRole("button", { name: "Return to product form" }));
-    expect(await screen.findByLabelText("Sellable stock")).toHaveValue(2);
+  it("adds five entries to an existing product without replacing its inventory", async () => {
+    mocks.save.mockResolvedValueOnce({ id: product.id, stock: 15, savedCount: 5 });
+    render(<AdminProducts />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    for (let index = 0; index < 5; index += 1) {
+      fireEvent.click(screen.getByRole("button", { name: "Add Another Log" }));
+    }
+    const usernames = screen.getAllByLabelText("ID or username");
+    const passwords = screen.getAllByLabelText("Password");
+    for (let index = 0; index < 5; index += 1) {
+      fireEvent.change(usernames[index]!, { target: { value: `new-account-${index}` } });
+      fireEvent.change(passwords[index]!, { target: { value: `new-password-${index}` } });
+    }
     fireEvent.click(screen.getByRole("button", { name: "Save product" }));
-    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(2));
-    expect(mocks.save.mock.calls[1]?.[0]).toMatchObject({ data: { stock: 2 } });
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    expect(mocks.save.mock.calls[0]?.[0].data.id).toBe(product.id);
+    expect(mocks.save.mock.calls[0]?.[0].data.inventory).toHaveLength(5);
+  });
+
+  it("previews malformed bulk rows and allows correcting them before saving", async () => {
+    render(<AdminProducts />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText(/Paste one record per line/), {
+      target: { value: "ID: account-1 | Password: pass1\nmalformed row" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Preview records" }));
+
+    expect(
+      screen.getByText(/2 records detected · 1 valid records · 1 need correction/),
+    ).toBeInTheDocument();
+    const usernames = screen.getAllByLabelText("ID or username");
+    const passwords = screen.getAllByLabelText("Password");
+    fireEvent.change(usernames[1]!, { target: { value: "account-2" } });
+    fireEvent.change(passwords[1]!, { target: { value: "pass2" } });
+    expect(
+      screen.getByText(/2 records detected · 2 valid records · 0 need correction/),
+    ).toBeInTheDocument();
   });
 });

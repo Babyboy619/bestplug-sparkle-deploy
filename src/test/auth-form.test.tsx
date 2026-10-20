@@ -91,6 +91,8 @@ describe("authentication form", () => {
 
     renderAuth();
 
+    expect(screen.queryByText(/continue with google/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/continue with lovable/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole("textbox")).toHaveLength(1);
     const email = screen.getByLabelText("Email");
     const password = screen.getByLabelText("Password");
@@ -128,6 +130,8 @@ describe("authentication form", () => {
     mocks.signUp.mockResolvedValue({ error: null, data: { user: null, session: null } });
     renderAuth("signup");
 
+    expect(screen.queryByText(/continue with google/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/continue with lovable/i)).not.toBeInTheDocument();
     expect(document.querySelectorAll("form input")).toHaveLength(3);
     fireEvent.change(screen.getByLabelText("Full Name"), { target: { value: "Ada Example" } });
     fireEvent.change(screen.getByLabelText("Email"), {
@@ -207,6 +211,28 @@ describe("authentication form", () => {
     expect(screen.getByRole("link", { name: "Back to sign in" })).toHaveAttribute(
       "href",
       "/auth?mode=signin",
+    );
+  });
+
+  it("continues to send password recovery emails", async () => {
+    mocks.reset.mockResolvedValue({ data: {}, error: null });
+    renderAuth("reset");
+
+    expect(
+      screen.queryByText(/continue with google|continue with lovable/i),
+    ).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "buyer@example.com" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Send reset link" }).closest("form")!);
+
+    await waitFor(() =>
+      expect(mocks.reset).toHaveBeenCalledWith("buyer@example.com", {
+        redirectTo: `${window.location.origin}/reset-password`,
+      }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Check your email for a password reset link.",
     );
   });
 });

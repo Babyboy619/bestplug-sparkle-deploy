@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowUpRight, Wallet } from "lucide-react";
+import { ArrowUpRight, Copy, Wallet } from "lucide-react";
 import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Tx = Database["public"]["Tables"]["wallet_transactions"]["Row"];
 type Order = Database["public"]["Tables"]["order_items"]["Row"];
+type ParentOrder = Database["public"]["Tables"]["orders"]["Row"];
+type OrderView = { item: Order; order: ParentOrder };
 type PendingPayment = { reference: string; amount: number; authorizationUrl?: string };
 
 export const Route = createFileRoute("/wallet")({
@@ -29,7 +31,7 @@ function WalletPage() {
   const { user, loading } = useAuthUser();
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<Tx[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderView[]>([]);
   const [message, setMessage] = useState("");
   const [amount, setAmount] = useState("1000");
   const [paymentBusy, setPaymentBusy] = useState(false);
@@ -44,16 +46,40 @@ function WalletPage() {
       return;
     }
     setBalance(Number(wallet.data?.[0]?.balance ?? 0));
-    const [tx, items] = await Promise.all([
+    const [tx, parentOrders] = await Promise.all([
       supabase
         .from("wallet_transactions")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(30),
-      supabase.from("order_items").select("*").order("created_at", { ascending: false }).limit(30),
+      supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(30),
     ]);
     setTransactions(tx.data ?? []);
-    setOrders(items.data ?? []);
+    if (parentOrders.error) {
+      setMessage("Your orders could not be loaded. Please try again.");
+      setOrders([]);
+    } else if (parentOrders.data?.length) {
+      const orderIds = parentOrders.data.map((order) => order.id);
+      const { data: items, error: itemError } = await supabase
+        .from("order_items")
+        .select("*")
+        .in("order_id", orderIds)
+        .order("created_at", { ascending: false });
+      if (itemError) {
+        setMessage("Your order details could not be loaded. Please try again.");
+        setOrders([]);
+      } else {
+        const ordersById = new Map(parentOrders.data.map((order) => [order.id, order]));
+        setOrders(
+          (items ?? []).flatMap((item) => {
+            const order = ordersById.get(item.order_id);
+            return order ? [{ item, order }] : [];
+          }),
+        );
+      }
+    } else {
+      setOrders([]);
+    }
     const { data: pending } = await supabase
       .from("payment_intents")
       .select("reference,amount,raw")
@@ -79,7 +105,15 @@ function WalletPage() {
   }
 
   useEffect(() => {
-    if (user) void refresh();
+    if (!user) {
+      setOrders([]);
+      setTransactions([]);
+      return;
+    }
+    void refresh();
+    const handlePurchase = () => void refresh();
+    window.addEventListener("bestplug-orders-updated", handlePurchase);
+    return () => window.removeEventListener("bestplug-orders-updated", handlePurchase);
   }, [user]);
 
   return (
@@ -241,22 +275,103 @@ function WalletPage() {
               {orders.length === 0 ? (
                 <p className="mt-4 text-sm text-muted-foreground">No purchases yet.</p>
               ) : (
-                orders.map((item) => (
-                  <article key={item.id} className="mt-4 border border-border p-4">
-                    <h3 className="font-semibold">{item.title}</h3>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Quantity: {item.quantity} · ₦{Number(item.unit_price).toLocaleString()}
-                    </p>
-                    <details className="mt-3">
-                      <summary className="cursor-pointer text-sm text-primary">
-                        Delivered account details
-                      </summary>
-                      <pre className="mt-3 whitespace-pre-wrap break-all text-sm">
-                        {item.delivered_payload ?? "Delivery pending"}
-                      </pre>
-                    </details>
-                  </article>
-                ))
+                orders.map(({ item, order }) => {
+                  const specifications =
+                    typeof item.delivered_specifications === "object" &&
+                    item.delivered_specifications !== null &&
+                    !Array.isArray(item.delivered_specifications)
+                      ? Object.entries(item.delivered_specifications)
+                      : [];
+                  return (
+                    <article key={item.id} className="mt-4 border border-border p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold">{item.title}</h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {item.platform ?? "Marketplace"}
+                          </p>
+                        </div>
+                        <span className="text-xs capitalize text-primary">
+                          Payment {order.status.replaceAll("_", " ")}
+                        </span>
+                      </div>
+                      <dl className="mt-4 grid gap-3 border-y border-border py-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                          <dt className="text-xs text-muted-foreground">Order reference</dt>
+                          <dd className="break-all">{order.id}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">Purchase price</dt>
+                          <dd>
+                            ₦
+                            {Number(item.unit_price).toLocaleString("en-NG", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">Quantity</dt>
+                          <dd>{item.quantity}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">Purchase date</dt>
+                          <dd>{new Date(order.created_at).toLocaleString()}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">Delivery status</dt>
+                          <dd>{item.delivered_payload ? "Delivered" : "Pending"}</dd>
+                        </div>
+                      </dl>
+                      <details className="mt-3">
+                        <summary className="cursor-pointer text-sm font-medium text-primary">
+                          View delivered product details
+                        </summary>
+                        {specifications.length > 0 && (
+                          <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                            {specifications.map(([key, value]) => (
+                              <div key={key}>
+                                <dt className="text-xs text-muted-foreground">{key}</dt>
+                                <dd className="whitespace-pre-wrap break-words">{String(value)}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
+                        <pre className="mt-3 whitespace-pre-wrap break-words rounded-md border border-border bg-muted/30 p-3 font-mono text-sm">
+                          {item.delivered_payload ?? "Delivery pending"}
+                        </pre>
+                        {item.delivery_instructions && (
+                          <p className="mt-3 whitespace-pre-wrap rounded-md border border-border p-3 text-sm">
+                            {item.delivery_instructions}
+                          </p>
+                        )}
+                        {item.delivered_payload && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-3"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(
+                                  [item.delivered_payload, item.delivery_instructions]
+                                    .filter(Boolean)
+                                    .join("\n\n"),
+                                );
+                                setMessage("Order details copied.");
+                              } catch {
+                                setMessage(
+                                  "Details could not be copied. Select and copy them manually.",
+                                );
+                              }
+                            }}
+                          >
+                            <Copy aria-hidden="true" /> Copy details
+                          </Button>
+                        )}
+                      </details>
+                    </article>
+                  );
+                })
               )}
             </section>
           </>

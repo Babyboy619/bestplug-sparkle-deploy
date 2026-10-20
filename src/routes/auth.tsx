@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,6 @@ import { pageHead } from "@/lib/metadata";
 import { nameSchema } from "@/lib/paystack-validation";
 import { Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
-import "@lovable.dev/cloud-auth-js/styles.css";
 export const Route = createFileRoute("/auth")({
   validateSearch: z.object({ mode: z.enum(["signin", "signup", "reset"]).optional() }),
   head: () => pageHead("Your account", "Sign in or create your BESTPLUG MARKETPLACE account."),
@@ -119,14 +117,6 @@ export function AuthPage() {
       setBusy(false);
     }
   }
-  async function social(provider: "google" | "lovable") {
-    setBusy(true);
-    const result = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: window.location.origin + "/auth",
-    });
-    if (result.error) setMessage(result.error.message);
-    setBusy(false);
-  }
   return (
     <SiteFrame>
       <main className="min-h-[65vh]">
@@ -211,25 +201,6 @@ export function AuthPage() {
             >
               {message}
             </p>
-          )}
-          {mode !== "reset" && (
-            <div className="mt-5 space-y-3 border-t border-border pt-5">
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={busy}
-                onClick={() => void social("google")}
-              >
-                Continue with Google
-              </Button>
-              <Button
-                className="lovable-auth-button w-full"
-                disabled={busy}
-                onClick={() => void social("lovable")}
-              >
-                Continue with Lovable
-              </Button>
-            </div>
           )}
           <div className="mt-5 flex flex-wrap justify-between gap-2">
             {mode === "signin" ? (

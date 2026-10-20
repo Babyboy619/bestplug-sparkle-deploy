@@ -607,6 +607,7 @@ export const adminSearchProducts = createServerFn({ method: "POST" })
   });
 
 const productInputSchema = z.object({
+  reference: z.string().uuid(),
   id: z.string().uuid().nullable(),
   title: z.string().trim().min(1).max(160),
   categoryId: z.string().uuid().nullable(),
@@ -617,7 +618,6 @@ const productInputSchema = z.object({
     .positive()
     .max(100000000)
     .refine((price) => Math.abs(price * 100 - Math.round(price * 100)) < 1e-7),
-  stock: z.number().int().min(0).max(1000000),
   status: z.enum(["draft", "published", "unavailable"]),
   specifications: z
     .record(z.string(), z.string().trim().max(500))
@@ -626,6 +626,22 @@ const productInputSchema = z.object({
         Object.keys(items).length <= 20 && Object.keys(items).every((key) => key.length <= 100),
     ),
   deliveryInstructions: z.string().max(5000),
+  inventory: z
+    .array(
+      z.object({
+        username: z.string().trim().min(1).max(1000),
+        password: z
+          .string()
+          .min(1)
+          .max(5000)
+          .refine((value) => value.trim().length > 0),
+        specifications: z
+          .record(z.string().max(100), z.string().max(500))
+          .refine((items) => Object.keys(items).length <= 20),
+        deliveryInstructions: z.string().max(5000),
+      }),
+    )
+    .max(1000),
 });
 
 export const adminSaveProduct = createServerFn({ method: "POST" })
@@ -641,12 +657,11 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "")
         .slice(0, 140) || "product";
-    let slug = `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
-    let imageUrl: string | null = null;
+    let slug = `${baseSlug}-${data.reference.slice(0, 8)}`;
     if (data.id) {
       const { data: existing, error: lookupError } = await context.supabase
         .from("products")
-        .select("slug,image_url")
+        .select("slug")
         .eq("id", data.id)
         .maybeSingle();
       if (lookupError || !existing) {
@@ -654,28 +669,31 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
         throw new Error("Product could not be found.");
       }
       slug = existing.slug;
-      imageUrl = existing.image_url;
     }
-    const { data: id, error } = await context.supabase.rpc("admin_save_product", {
-      _product_id: data.id as string,
-      _title: data.title,
-      _slug: slug,
-      _category_id: data.categoryId as string,
-      _description: data.description,
-      _price: data.price,
-      _stock: data.stock,
-      _image_url: imageUrl as string,
-      _status: data.status,
-      _metadata: {
-        specifications: data.specifications,
-        delivery_instructions: data.deliveryInstructions.trim(),
+    const { data: result, error } = await context.supabase.rpc(
+      "admin_save_product_with_inventory",
+      {
+        _reference: data.reference,
+        _product_id: data.id,
+        _title: data.title,
+        _slug: slug,
+        _category_id: data.categoryId,
+        _description: data.description,
+        _price: data.price,
+        _status: data.status,
+        _metadata: {
+          specifications: data.specifications,
+          delivery_instructions: data.deliveryInstructions.trim(),
+        },
+        _inventory: data.inventory,
       },
-    });
-    if (error || !id) {
+    );
+    if (error || !result) {
       if (error) console.error("Administrator product save failed:", error);
       throw new Error(error?.message ?? "Product could not be saved.");
     }
-    return { id };
+    const saved = result as { id: string; stock: number; savedCount: number };
+    return saved;
   });
 
 export const adminArchiveProduct = createServerFn({ method: "POST" })
@@ -715,42 +733,76 @@ export const adminProductActivity = createServerFn({ method: "POST" })
     return events;
   });
 
-export const adminProductInventoryCount = createServerFn({ method: "POST" })
+export const adminProductInventorySummary = createServerFn({ method: "POST" })
   .middleware([requireActiveAccount])
   .inputValidator((input) => z.object({ productId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
-    const { data: count, error } = await context.supabase.rpc("admin_inventory_count", {
+    const { data: summary, error } = await context.supabase.rpc("admin_inventory_summary", {
+      _product_id: data.productId,
+    });
+    if (error || !summary) {
+      if (error) console.error("Product inventory summary failed:", error);
+      throw new Error("Delivery inventory summary could not be loaded.");
+    }
+    return summary as {
+      total: number;
+      available: number;
+      sold: number;
+      reserved: number;
+      newlyAdded: number;
+    };
+  });
+
+export const adminListAvailableInventory = createServerFn({ method: "POST" })
+  .middleware([requireActiveAccount])
+  .inputValidator((input) => z.object({ productId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { data: entries, error } = await context.supabase.rpc("admin_list_available_inventory", {
       _product_id: data.productId,
     });
     if (error) {
-      console.error("Product inventory count failed:", error);
-      throw new Error("Delivery inventory could not be checked.");
+      console.error("Available inventory list failed:", error);
+      throw new Error("Available delivery inventory could not be loaded.");
     }
-    return count ?? 0;
+    return entries ?? [];
   });
 
-export const adminAddProductInventory = createServerFn({ method: "POST" })
+export const adminUpdateAvailableInventory = createServerFn({ method: "POST" })
   .middleware([requireActiveAccount])
   .inputValidator((input) =>
     z
       .object({
-        productId: z.string().uuid(),
-        content: z.string().trim().min(1).max(10000),
-        reference: z.string().uuid(),
+        credentialId: z.string().uuid(),
+        username: z.string().trim().min(1).max(1000),
+        password: z
+          .string()
+          .min(1)
+          .max(5000)
+          .refine((value) => value.trim().length > 0),
+        specifications: z
+          .record(z.string().max(100), z.string().max(500))
+          .refine((items) => Object.keys(items).length <= 20),
+        deliveryInstructions: z.string().max(5000),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireAdmin(context.supabase, context.userId);
-    const { data: stock, error } = await context.supabase.rpc("admin_add_product_credential", {
-      _product_id: data.productId,
-      _content: data.content,
-      _reference: data.reference,
-    });
-    if (error || stock === null) {
-      if (error) console.error("Delivery inventory update failed:", error);
-      throw new Error(error?.message ?? "Delivery inventory could not be added.");
+    const { data: updated, error } = await context.supabase.rpc(
+      "admin_update_available_inventory",
+      {
+        _credential_id: data.credentialId,
+        _username: data.username,
+        _password: data.password,
+        _specifications: data.specifications,
+        _delivery_instructions: data.deliveryInstructions,
+      },
+    );
+    if (error || updated !== true) {
+      if (error) console.error("Available inventory update failed:", error);
+      throw new Error(error?.message ?? "Available delivery inventory could not be updated.");
     }
-    return { stock };
+    return { updated: true };
   });

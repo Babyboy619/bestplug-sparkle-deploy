@@ -1,11 +1,7 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useAuthUser } from "@/hooks/use-auth-user";
-import { addCartItem } from "@/lib/cart";
-import { supabase } from "@/integrations/supabase/client";
+import { BuyNowButton } from "@/components/buy-now-button";
 import type { CatalogProduct } from "@/lib/catalog.types";
 
 export function CatalogProductCard({
@@ -15,100 +11,20 @@ export function CatalogProductCard({
   product: CatalogProduct;
   categoryName?: string;
 }) {
-  const { user } = useAuthUser();
-  const navigate = useNavigate();
-  const [wishlisted, setWishlisted] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [stock, setStock] = useState(product.stock);
 
-  useEffect(() => {
-    let active = true;
-    if (!user) {
-      setWishlisted(false);
-      return;
-    }
-    void supabase
-      .from("wishlist_items")
-      .select("product_id")
-      .eq("user_id", user.id)
-      .eq("product_id", product.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (active) setWishlisted(Boolean(data));
-      });
-    return () => {
-      active = false;
-    };
-  }, [product.id, user]);
-
-  async function toggleWishlist() {
-    if (!user) {
-      toast.message("Sign in to save products to your wishlist.");
-      void navigate({ to: "/auth" });
-      return;
-    }
-    setBusy(true);
-    const result = wishlisted
-      ? await supabase
-          .from("wishlist_items")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("product_id", product.id)
-      : await supabase.from("wishlist_items").insert({ user_id: user.id, product_id: product.id });
-    setBusy(false);
-    if (result.error) {
-      toast.error("Your wishlist could not be updated. Please try again.");
-      return;
-    }
-    setWishlisted(!wishlisted);
-    toast.success(wishlisted ? "Removed from wishlist." : "Added to wishlist.");
-  }
-
-  async function addToCart() {
-    if (!user) {
-      toast.message("Sign in to add products to your cart.");
-      void navigate({ to: "/auth" });
-      return;
-    }
-    setBusy(true);
-    try {
-      await addCartItem(user.id, product.id);
-      window.dispatchEvent(new Event("bestplug-cart-updated"));
-      toast.success("Added to cart.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The product could not be added.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  useEffect(() => setStock(product.stock), [product.stock]);
 
   return (
     <article className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="line-clamp-2 font-semibold">{product.title}</h2>
-            {categoryName && (
-              <p className="mt-1 text-xs font-medium text-primary" aria-label="Platform">
-                {categoryName}
-              </p>
-            )}
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            aria-label={
-              wishlisted
-                ? `Remove ${product.title} from wishlist`
-                : `Add ${product.title} to wishlist`
-            }
-            aria-pressed={wishlisted}
-            disabled={busy}
-            onClick={() => void toggleWishlist()}
-            className="size-10 shrink-0"
-          >
-            <Heart className={wishlisted ? "fill-rose-500 text-rose-500" : "text-foreground"} />
-          </Button>
+        <div className="min-w-0">
+          <h2 className="line-clamp-2 font-semibold">{product.title}</h2>
+          {categoryName && (
+            <p className="mt-1 text-xs font-medium text-primary" aria-label="Platform">
+              {categoryName}
+            </p>
+          )}
         </div>
         {product.description && (
           <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">
@@ -127,22 +43,21 @@ export function CatalogProductCard({
             <p className="mt-1 text-xs text-muted-foreground">
               {product.product_status !== "published"
                 ? "Unavailable"
-                : product.stock > 0
-                  ? `${product.stock} available`
+                : stock > 0
+                  ? `${stock} available`
                   : "Out of stock"}
             </p>
           </div>
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            aria-label={`Add ${product.title} to cart`}
-            disabled={busy || product.stock < 1 || product.product_status !== "published"}
-            onClick={() => void addToCart()}
-          >
-            <ShoppingCart aria-hidden="true" />
-          </Button>
         </div>
+        <BuyNowButton
+          productId={product.id}
+          title={product.title}
+          available={stock > 0}
+          published={product.product_status === "published"}
+          onPurchased={setStock}
+          fullWidth
+          className="mt-3"
+        />
         <Button asChild variant="ghost" className="mt-2 justify-between px-0">
           <Link to="/products/$slug" params={{ slug: product.slug }}>
             View product <span aria-hidden="true">→</span>
