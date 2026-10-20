@@ -674,10 +674,11 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
       "admin_save_product_with_inventory",
       {
         _reference: data.reference,
-        _product_id: data.id,
+        // PostgreSQL accepts null for these UUID arguments; generated RPC types omit nullability.
+        _product_id: data.id as string,
         _title: data.title,
         _slug: slug,
-        _category_id: data.categoryId,
+        _category_id: data.categoryId as string,
         _description: data.description,
         _price: data.price,
         _status: data.status,
