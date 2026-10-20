@@ -607,7 +607,7 @@ export function AdminProducts() {
           <DialogHeader>
             <DialogTitle>{form?.id ? "Edit product" : "Create product"}</DialogTitle>
             <DialogDescription>
-              Product details are saved to the marketplace database. No image is required.
+              Product details are saved to the marketplace database.
             </DialogDescription>
           </DialogHeader>
           {form && (
@@ -978,6 +978,37 @@ export function AdminProducts() {
                 <h3 id="bulk-logs-heading" className="text-base font-semibold">
                   Bulk Add Logs
                 </h3>
+                <label className="block text-sm">
+                  Upload log files (.txt)
+                  <Input
+                    type="file"
+                    accept=".txt,text/plain"
+                    multiple
+                    disabled={formBusy}
+                    className="mt-1"
+                    onChange={async (event) => {
+                      const files = Array.from(event.target.files ?? []);
+                      event.target.value = "";
+                      if (!files.length) return;
+                      if (files.some((file) => !file.name.toLowerCase().endsWith(".txt") || file.size > 1000000)) {
+                        setFormError("Choose text log files smaller than 1 MB each.");
+                        return;
+                      }
+                      try {
+                        const text = (await Promise.all(files.map((file) => file.text()))).join("\n");
+                        const imported = parseBulkInventory(text).entries;
+                        if (imported.length + bulkEntries.length + form.inventory.length > 1000) {
+                          setFormError("Save up to 1,000 logs per batch.");
+                          return;
+                        }
+                        setBulkEntries((entries) => [...entries, ...imported]);
+                        setFormError(null);
+                      } catch {
+                        setFormError("The log files could not be read. Please try again.");
+                      }
+                    }}
+                  />
+                </label>
                 <label className="block text-sm">
                   Paste one record per line, using ID: value | Password: value | Custom field: value
                   <textarea
