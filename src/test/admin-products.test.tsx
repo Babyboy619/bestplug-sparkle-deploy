@@ -98,6 +98,26 @@ describe("admin product editing", () => {
     });
   });
 
+  it("uploads multiple log files together and submits their records", async () => {
+    render(<AdminProducts />);
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    const first = new File([], "first.txt", { type: "text/plain" });
+    const second = new File([], "second.txt", { type: "text/plain" });
+    Object.defineProperty(first, "text", { value: async () => "ID: first | Password: one" });
+    Object.defineProperty(second, "text", { value: async () => "ID: second | Password: two" });
+    fireEvent.change(screen.getByLabelText("Upload log files (.txt)"), {
+      target: { files: [first, second] },
+    });
+    await waitFor(() => expect(screen.getAllByLabelText("ID or username")).toHaveLength(2));
+    fireEvent.click(screen.getByRole("button", { name: "Save product" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
+    expect(mocks.save.mock.calls[0]?.[0].data.inventory).toEqual([
+      { username: "first", password: "one", specifications: {}, deliveryInstructions: "" },
+      { username: "second", password: "two", specifications: {}, deliveryInstructions: "" },
+    ]);
+    expect(mocks.save.mock.calls[0]?.[0].data.reference).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
   it("creates a product with ten inventory entries", async () => {
     mocks.save.mockResolvedValueOnce({ id: product.id, stock: 10, savedCount: 10 });
     render(<AdminProducts />);
