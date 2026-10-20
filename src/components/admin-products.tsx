@@ -12,17 +12,28 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  adminAddProductInventory,
   adminArchiveProduct,
   adminProductActivity,
-  adminProductInventoryCount,
+  adminProductInventorySummary,
+  adminListAvailableInventory,
   adminSaveProduct,
+  adminUpdateAvailableInventory,
   adminSearchProducts,
 } from "@/lib/admin.functions";
+import {
+  emptyInventoryDraft,
+  inventoryDuplicateKey,
+  inventoryEntryError,
+  inventoryEntryPayload,
+  parseBulkInventory,
+  type InventoryDraft,
+} from "@/lib/admin-inventory";
 
 type ProductResult = Awaited<ReturnType<typeof adminSearchProducts>>;
 type AdminProduct = NonNullable<ProductResult["products"]>[number];
 type ActivityResult = Awaited<ReturnType<typeof adminProductActivity>>;
+type AvailableInventoryResult = Awaited<ReturnType<typeof adminListAvailableInventory>>;
+type ManagedInventoryEntry = InventoryDraft & { credentialId: string; content: string };
 type ProductStatus = "draft" | "published" | "unavailable";
 
 type ProductForm = {
@@ -31,10 +42,10 @@ type ProductForm = {
   categoryId: string;
   description: string;
   price: string;
-  stock: string;
   status: ProductStatus;
   specifications: string;
   deliveryInstructions: string;
+  inventory: InventoryDraft[];
 };
 
 const emptyForm: ProductForm = {
@@ -43,10 +54,10 @@ const emptyForm: ProductForm = {
   categoryId: "",
   description: "",
   price: "",
-  stock: "0",
   status: "draft",
   specifications: "",
   deliveryInstructions: "",
+  inventory: [],
 };
 
 function productMetadata(product: AdminProduct): {
@@ -83,8 +94,9 @@ export function AdminProducts() {
   const saveProduct = useServerFn(adminSaveProduct);
   const archiveProduct = useServerFn(adminArchiveProduct);
   const loadActivity = useServerFn(adminProductActivity);
-  const loadInventoryCount = useServerFn(adminProductInventoryCount);
-  const addInventory = useServerFn(adminAddProductInventory);
+  const loadInventorySummary = useServerFn(adminProductInventorySummary);
+  const loadAvailableInventory = useServerFn(adminListAvailableInventory);
+  const updateAvailableInventory = useServerFn(adminUpdateAvailableInventory);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | ProductStatus | "archived">("all");
   const [categoryId, setCategoryId] = useState("all");
@@ -94,20 +106,26 @@ export function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<ProductForm | null>(null);
+  const [formReference, setFormReference] = useState<string | null>(null);
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkEntries, setBulkEntries] = useState<InventoryDraft[]>([]);
   const [archiveTarget, setArchiveTarget] = useState<AdminProduct | null>(null);
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [activityProduct, setActivityProduct] = useState<AdminProduct | null>(null);
   const [activity, setActivity] = useState<ActivityResult>([]);
   const [activityLoading, setActivityLoading] = useState(false);
-  const [inventoryProduct, setInventoryProduct] = useState<AdminProduct | null>(null);
-  const [inventoryCount, setInventoryCount] = useState<number | null>(null);
-  const [inventoryContent, setInventoryContent] = useState("");
-  const [inventoryBusy, setInventoryBusy] = useState(false);
-  const [inventoryReference, setInventoryReference] = useState<string | null>(null);
-  const [inventoryConfirmationOpen, setInventoryConfirmationOpen] = useState(false);
-  const [inventoryReturnForm, setInventoryReturnForm] = useState<ProductForm | null>(null);
+  const [inventorySummary, setInventorySummary] = useState<{
+    total: number;
+    available: number;
+    sold: number;
+    reserved: number;
+    newlyAdded: number;
+  } | null>(null);
+  const [availableInventory, setAvailableInventory] = useState<ManagedInventoryEntry[]>([]);
+  const [availableInventoryLoading, setAvailableInventoryLoading] = useState(false);
+  const [inventorySaveId, setInventorySaveId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -158,6 +176,61 @@ export function AdminProducts() {
     };
   }, [activityProduct, refreshIndex, loadActivity]);
 
+  useEffect(() => {
+    if (!form?.id) {
+      setInventorySummary(null);
+      setAvailableInventory([]);
+      setAvailableInventoryLoading(false);
+      return;
+    }
+    let active = true;
+    setInventorySummary(null);
+    setAvailableInventory([]);
+    setAvailableInventoryLoading(true);
+    void loadInventorySummary({ data: { productId: form.id } })
+      .then((summary) => {
+        if (active) setInventorySummary(summary);
+      })
+      .catch((cause: unknown) => {
+        if (active)
+          toast.error(cause instanceof Error ? cause.message : "Inventory summary is unavailable.");
+      });
+    void loadAvailableInventory({ data: { productId: form.id } })
+      .then((entries: AvailableInventoryResult) => {
+        if (!active) return;
+        setAvailableInventory(
+          entries.map((entry) => ({
+            key: entry.id,
+            credentialId: entry.id,
+            content: entry.content,
+            username: entry.username ?? "",
+            password: entry.password ?? "",
+            specifications:
+              typeof entry.specifications === "object" &&
+              entry.specifications !== null &&
+              !Array.isArray(entry.specifications)
+                ? Object.entries(entry.specifications)
+                    .map(([key, value]) => `${key}: ${String(value)}`)
+                    .join("\n")
+                : "",
+            deliveryInstructions: entry.delivery_instructions ?? "",
+          })),
+        );
+      })
+      .catch((cause: unknown) => {
+        if (active)
+          toast.error(
+            cause instanceof Error ? cause.message : "Available inventory is unavailable.",
+          );
+      })
+      .finally(() => {
+        if (active) setAvailableInventoryLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [form?.id, loadAvailableInventory, loadInventorySummary]);
+
   const pageCount = Math.max(1, Math.ceil((result?.total ?? 0) / 20));
 
   function editProduct(product: AdminProduct) {
@@ -168,14 +241,38 @@ export function AdminProducts() {
       categoryId: product.category_id ?? "",
       description: product.description ?? "",
       price: String(product.price),
-      stock: String(product.stock),
       status: product.product_status,
       specifications: Object.entries(metadata.specifications)
         .map(([key, value]) => `${key}: ${value}`)
         .join("\n"),
       deliveryInstructions: metadata.deliveryInstructions,
+      inventory: [],
     });
+    setFormReference(crypto.randomUUID());
+    setBulkText("");
+    setBulkEntries([]);
     setFormError(null);
+  }
+
+  async function saveAvailableEntry(entry: ManagedInventoryEntry) {
+    const validationError = inventoryEntryError(entry);
+    if (validationError) {
+      setFormError(`Available inventory: ${validationError}`);
+      return;
+    }
+    setInventorySaveId(entry.credentialId);
+    setFormError(null);
+    try {
+      await updateAvailableInventory({
+        data: { credentialId: entry.credentialId, ...inventoryEntryPayload(entry) },
+      });
+      toast.success("Available inventory entry updated.");
+      setRefreshIndex((value) => value + 1);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Inventory entry could not be updated.");
+    } finally {
+      setInventorySaveId(null);
+    }
   }
 
   async function submitProduct(event: React.FormEvent<HTMLFormElement>) {
@@ -202,49 +299,86 @@ export function AdminProducts() {
     }
 
     const price = Number(form.price);
-    const stock = Number(form.stock);
     if (
       !Number.isFinite(price) ||
       price <= 0 ||
-      Math.abs(price * 100 - Math.round(price * 100)) >= 1e-7 ||
-      !Number.isInteger(stock) ||
-      stock < 0
+      Math.abs(price * 100 - Math.round(price * 100)) >= 1e-7
     ) {
-      setFormError("Enter a positive NGN price and a non-negative whole-number stock quantity.");
+      setFormError("Enter a positive NGN price with at most two decimal places.");
       return;
+    }
+    if (!formReference) {
+      setFormError("The save request could not be prepared. Close and reopen the product form.");
+      return;
+    }
+    const entries = [...form.inventory, ...bulkEntries];
+    const seen = new Set(
+      availableInventory.filter((entry) => !inventoryEntryError(entry)).map(inventoryDuplicateKey),
+    );
+    for (const [index, entry] of entries.entries()) {
+      const entryError = inventoryEntryError(entry);
+      if (entryError) {
+        setFormError(`Inventory record ${index + 1}: ${entryError}`);
+        return;
+      }
+      const duplicateKey = inventoryDuplicateKey(entry);
+      if (seen.has(duplicateKey)) {
+        setFormError(`Inventory record ${index + 1} duplicates an existing or submitted record.`);
+        return;
+      }
+      seen.add(duplicateKey);
     }
     setFormBusy(true);
     setFormError(null);
     try {
-      await saveProduct({
+      const saved = await saveProduct({
         data: {
+          reference: formReference,
           id: form.id,
           title: form.title,
           categoryId: form.categoryId || null,
           description: form.description,
           price,
-          stock,
           status: form.status,
           specifications: specs,
           deliveryInstructions: form.deliveryInstructions,
+          inventory: entries.map(inventoryEntryPayload),
         },
       });
-      toast.success(form.id ? "Product updated." : "Product created.");
+      toast.success(
+        `${form.id ? "Product updated" : "Product created"}. ${saved.savedCount} inventory ${saved.savedCount === 1 ? "entry" : "entries"} saved successfully. Available stock: ${saved.stock}.`,
+      );
       setForm(null);
+      setFormReference(null);
+      setBulkEntries([]);
+      setBulkText("");
       setRefreshIndex((value) => value + 1);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Product could not be saved.";
       setFormError(
-        message.includes("Add delivery inventory before increasing sellable stock")
-          ? "Sellable stock must be backed by available delivery records. Add records from Manage delivery inventory; each record increases stock automatically. New products must be saved with 0 stock first."
-          : message.includes("A published product needs available delivery inventory")
-            ? "A product can be published only after every sellable item has a delivery record. Save it as Draft with 0 stock, add delivery inventory, then edit and publish it."
-            : message,
+        message.includes("A published product needs available delivery inventory")
+          ? "A product can be published only after adding at least one available delivery record."
+          : message,
       );
     } finally {
       setFormBusy(false);
     }
   }
+
+  const previewValidCount = (() => {
+    const seen = new Set(
+      availableInventory.filter((entry) => !inventoryEntryError(entry)).map(inventoryDuplicateKey),
+    );
+    let count = 0;
+    for (const entry of [...(form?.inventory ?? []), ...bulkEntries]) {
+      if (inventoryEntryError(entry)) continue;
+      const key = inventoryDuplicateKey(entry);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (bulkEntries.some((bulkEntry) => bulkEntry.key === entry.key)) count += 1;
+    }
+    return count;
+  })();
 
   async function confirmArchive() {
     if (!archiveTarget) return;
@@ -266,63 +400,6 @@ export function AdminProducts() {
     }
   }
 
-  async function openInventory(product: AdminProduct, returnToForm: ProductForm | null = null) {
-    setInventoryReturnForm(returnToForm);
-    setInventoryProduct(product);
-    setInventoryContent("");
-    setInventoryReference(null);
-    setInventoryCount(null);
-    try {
-      const count = await loadInventoryCount({ data: { productId: product.id } });
-      setInventoryCount(count);
-    } catch (cause) {
-      toast.error(
-        cause instanceof Error ? cause.message : "Delivery inventory could not be checked.",
-      );
-    }
-  }
-
-  async function confirmAddInventory() {
-    if (!inventoryProduct || !inventoryContent.trim()) return;
-    const reference = inventoryReference ?? crypto.randomUUID();
-    setInventoryReference(reference);
-    setInventoryBusy(true);
-    try {
-      const result = await addInventory({
-        data: {
-          productId: inventoryProduct.id,
-          content: inventoryContent.trim(),
-          reference,
-        },
-      });
-      setInventoryCount((value) => (value ?? 0) + 1);
-      setInventoryProduct({ ...inventoryProduct, stock: result.stock });
-      setInventoryReturnForm((draft) => (draft ? { ...draft, stock: String(result.stock) } : null));
-      setFormError(null);
-      setInventoryContent("");
-      setInventoryReference(null);
-      setInventoryConfirmationOpen(false);
-      toast.success("One delivery record was added and stock updated.");
-      setRefreshIndex((value) => value + 1);
-    } catch (cause) {
-      toast.error(
-        cause instanceof Error ? cause.message : "Delivery inventory could not be added.",
-      );
-    } finally {
-      setInventoryBusy(false);
-    }
-  }
-
-  function closeInventory() {
-    setInventoryProduct(null);
-    setInventoryCount(null);
-    if (inventoryReturnForm) {
-      setForm(inventoryReturnForm);
-      setFormError(null);
-    }
-    setInventoryReturnForm(null);
-  }
-
   return (
     <section aria-labelledby="admin-products-heading" className="mt-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -338,6 +415,12 @@ export function AdminProducts() {
           type="button"
           onClick={() => {
             setForm({ ...emptyForm });
+            setFormReference(crypto.randomUUID());
+            setBulkText("");
+            setBulkEntries([]);
+            setInventorySummary(null);
+            setAvailableInventory([]);
+            setAvailableInventoryLoading(false);
             setFormError(null);
           }}
         >
@@ -404,33 +487,39 @@ export function AdminProducts() {
         </p>
       ) : result?.products?.length ? (
         <>
-          <div className="mt-5 overflow-x-auto rounded-lg border border-border">
-            <table className="w-full min-w-[850px] text-left text-sm">
+          <div className="mt-5 rounded-lg border border-border">
+            <table className="w-full table-fixed text-left text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-3 font-semibold">Product</th>
-                  <th className="p-3 font-semibold">Category</th>
+                  <th className="hidden p-3 font-semibold sm:table-cell">Category</th>
                   <th className="p-3 font-semibold">Price</th>
                   <th className="p-3 font-semibold">Stock</th>
                   <th className="p-3 font-semibold">Status</th>
-                  <th className="p-3 font-semibold">Created</th>
+                  <th className="hidden p-3 font-semibold md:table-cell">Created</th>
                   <th className="p-3 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {result.products.map((product) => (
                   <tr key={product.id} className="border-t border-border">
-                    <td className="p-3">
+                    <td className="break-words p-3">
                       <p className="font-medium">{product.title}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{product.slug}</p>
+                      <p className="mt-1 hidden break-all text-xs text-muted-foreground sm:block">
+                        {product.slug}
+                      </p>
                     </td>
-                    <td className="p-3">{product.product_categories?.name ?? "Uncategorized"}</td>
+                    <td className="hidden break-words p-3 sm:table-cell">
+                      {product.product_categories?.name ?? "Uncategorized"}
+                    </td>
                     <td className="p-3">{money(Number(product.price))}</td>
                     <td className="p-3">{product.stock}</td>
                     <td className="p-3 capitalize">
                       {product.archived_at ? "Archived" : product.product_status}
                     </td>
-                    <td className="p-3">{new Date(product.created_at).toLocaleDateString()}</td>
+                    <td className="hidden p-3 md:table-cell">
+                      {new Date(product.created_at).toLocaleDateString()}
+                    </td>
                     <td className="p-3">
                       <div className="flex flex-wrap gap-2">
                         {!product.archived_at && (
@@ -447,9 +536,9 @@ export function AdminProducts() {
                               type="button"
                               size="sm"
                               variant="outline"
-                              onClick={() => void openInventory(product)}
+                              onClick={() => editProduct(product)}
                             >
-                              Add delivery
+                              Add inventory
                             </Button>
                           </>
                         )}
@@ -594,39 +683,447 @@ export function AdminProducts() {
                     onChange={(event) => setForm({ ...form, price: event.target.value })}
                   />
                 </label>
-                <label className="block text-sm">
-                  Sellable stock
-                  <Input
-                    className="mt-1"
-                    type="number"
-                    min="0"
-                    max="1000000"
-                    step="1"
-                    required
-                    value={form.stock}
-                    onChange={(event) => setForm({ ...form, stock: event.target.value })}
-                  />
-                </label>
               </div>
-              <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                Set any stock amount. Optionally add delivery records so buyers receive details instantly.
-                {form.id && (
+              <div className="rounded-md border border-border p-3">
+                <h3 className="text-sm font-semibold">Inventory summary</h3>
+                {form.id ? (
+                  inventorySummary ? (
+                    <dl className="mt-2 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                      <div>
+                        <dt className="text-muted-foreground">Total</dt>
+                        <dd>{inventorySummary.total}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Available</dt>
+                        <dd>{inventorySummary.available}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Sold</dt>
+                        <dd>{inventorySummary.sold}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Reserved</dt>
+                        <dd>{inventorySummary.reserved}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">New, 24h</dt>
+                        <dd>{inventorySummary.newlyAdded}</dd>
+                      </div>
+                    </dl>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground" role="status">
+                      Loading inventory…
+                    </p>
+                  )
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">No inventory saved yet.</p>
+                )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Available stock is calculated from unassigned, unreserved delivery entries. New
+                  entries in this form: {form.inventory.length + bulkEntries.length}.
+                </p>
+              </div>
+              {form.id && (
+                <section
+                  aria-labelledby="available-inventory-heading"
+                  className="space-y-3 border-t border-border pt-4"
+                >
+                  <h3 id="available-inventory-heading" className="text-base font-semibold">
+                    Available inventory
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Only unsold, unreserved entries are listed here. Sold and reserved credentials
+                    cannot be edited.
+                  </p>
+                  {availableInventoryLoading ? (
+                    <p className="text-sm text-muted-foreground" role="status">
+                      Loading available entries…
+                    </p>
+                  ) : availableInventory.length ? (
+                    availableInventory.map((entry, index) => (
+                      <fieldset
+                        key={entry.credentialId}
+                        className="space-y-3 rounded-md border border-border p-3"
+                      >
+                        <legend className="px-1 text-sm font-semibold">
+                          Available entry {index + 1}
+                        </legend>
+                        {(!entry.username || !entry.password) && (
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Existing delivery payload
+                            </p>
+                            <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded border border-border p-2 text-xs">
+                              {entry.content}
+                            </pre>
+                          </div>
+                        )}
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="text-sm">
+                            ID or username
+                            <Input
+                              className="mt-1"
+                              value={entry.username}
+                              autoComplete="off"
+                              onChange={(event) =>
+                                setAvailableInventory(
+                                  availableInventory.map((item) =>
+                                    item.credentialId === entry.credentialId
+                                      ? { ...item, username: event.target.value }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                          <label className="text-sm">
+                            Password
+                            <textarea
+                              className="mt-1 min-h-10 w-full rounded-md border border-input bg-background p-3"
+                              autoComplete="off"
+                              spellCheck={false}
+                              value={entry.password}
+                              onChange={(event) =>
+                                setAvailableInventory(
+                                  availableInventory.map((item) =>
+                                    item.credentialId === entry.credentialId
+                                      ? { ...item, password: event.target.value }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                        </div>
+                        <label className="block text-sm">
+                          Additional specifications
+                          <textarea
+                            className="mt-1 min-h-16 w-full rounded-md border border-input bg-background p-3"
+                            value={entry.specifications}
+                            onChange={(event) =>
+                              setAvailableInventory(
+                                availableInventory.map((item) =>
+                                  item.credentialId === entry.credentialId
+                                    ? { ...item, specifications: event.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="block text-sm">
+                          Delivery instructions
+                          <textarea
+                            className="mt-1 min-h-16 w-full rounded-md border border-input bg-background p-3"
+                            value={entry.deliveryInstructions}
+                            onChange={(event) =>
+                              setAvailableInventory(
+                                availableInventory.map((item) =>
+                                  item.credentialId === entry.credentialId
+                                    ? { ...item, deliveryInstructions: event.target.value }
+                                    : item,
+                                ),
+                              )
+                            }
+                          />
+                        </label>
+                        {inventoryEntryError(entry) && (
+                          <p className="text-sm text-destructive" role="alert">
+                            {inventoryEntryError(entry)}
+                          </p>
+                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={inventorySaveId !== null}
+                          onClick={() => void saveAvailableEntry(entry)}
+                        >
+                          {inventorySaveId === entry.credentialId
+                            ? "Saving…"
+                            : "Save inventory entry"}
+                        </Button>
+                      </fieldset>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No available entries to manage.</p>
+                  )}
+                </section>
+              )}
+              <section
+                aria-labelledby="delivery-inventory-heading"
+                className="space-y-4 border-t border-border pt-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 id="delivery-inventory-heading" className="text-base font-semibold">
+                    Delivery Inventory / Product Logs
+                  </h3>
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="mt-3 block"
-                    onClick={() => {
-                      const product = result?.products.find((item) => item.id === form.id);
-                      if (!product) return;
-                      setForm(null);
-                      void openInventory(product, form);
-                    }}
+                    onClick={() =>
+                      setForm({ ...form, inventory: [...form.inventory, emptyInventoryDraft()] })
+                    }
                   >
-                    Manage delivery inventory
+                    Add Another Log
                   </Button>
+                </div>
+                {form.inventory.map((entry, index) => (
+                  <fieldset
+                    key={entry.key}
+                    className="space-y-3 rounded-md border border-border p-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <legend className="text-sm font-semibold">Log {index + 1}</legend>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            inventory: form.inventory.filter((item) => item.key !== entry.key),
+                          })
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="text-sm">
+                        ID or username
+                        <Input
+                          className="mt-1"
+                          value={entry.username}
+                          autoComplete="off"
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              inventory: form.inventory.map((item) =>
+                                item.key === entry.key
+                                  ? { ...item, username: event.target.value }
+                                  : item,
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="text-sm">
+                        Password
+                        <textarea
+                          className="mt-1 min-h-10 w-full rounded-md border border-input bg-background p-3"
+                          autoComplete="off"
+                          spellCheck={false}
+                          value={entry.password}
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              inventory: form.inventory.map((item) =>
+                                item.key === entry.key
+                                  ? { ...item, password: event.target.value }
+                                  : item,
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <label className="block text-sm">
+                      Additional specifications
+                      <textarea
+                        className="mt-1 min-h-20 w-full rounded-md border border-input bg-background p-3"
+                        placeholder="Region: Nigeria"
+                        value={entry.specifications}
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            inventory: form.inventory.map((item) =>
+                              item.key === entry.key
+                                ? { ...item, specifications: event.target.value }
+                                : item,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="block text-sm">
+                      Delivery instructions
+                      <textarea
+                        className="mt-1 min-h-20 w-full rounded-md border border-input bg-background p-3"
+                        value={entry.deliveryInstructions}
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            inventory: form.inventory.map((item) =>
+                              item.key === entry.key
+                                ? { ...item, deliveryInstructions: event.target.value }
+                                : item,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                    {inventoryEntryError(entry) && (
+                      <p className="text-sm text-destructive" role="alert">
+                        {inventoryEntryError(entry)}
+                      </p>
+                    )}
+                  </fieldset>
+                ))}
+              </section>
+              <section
+                aria-labelledby="bulk-logs-heading"
+                className="space-y-3 border-t border-border pt-4"
+              >
+                <h3 id="bulk-logs-heading" className="text-base font-semibold">
+                  Bulk Add Logs
+                </h3>
+                <label className="block text-sm">
+                  Paste one record per line, using ID: value | Password: value | Custom field: value
+                  <textarea
+                    className="mt-1 min-h-28 w-full rounded-md border border-input bg-background p-3 font-mono text-sm"
+                    value={bulkText}
+                    onChange={(event) => setBulkText(event.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!bulkText.trim()}
+                    onClick={() => setBulkEntries(parseBulkInventory(bulkText).entries)}
+                  >
+                    Preview records
+                  </Button>
+                  {bulkEntries.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setBulkEntries([]);
+                        setBulkText("");
+                      }}
+                    >
+                      Cancel import
+                    </Button>
+                  )}
+                </div>
+                {bulkEntries.length > 0 && (
+                  <div className="space-y-3" aria-live="polite">
+                    <p className="text-sm">
+                      {bulkEntries.length} records detected · {previewValidCount} valid records ·{" "}
+                      {bulkEntries.length - previewValidCount} need correction or are duplicates
+                    </p>
+                    {bulkEntries.map((entry, index) => {
+                      const priorEntries = [...form.inventory, ...bulkEntries.slice(0, index)];
+                      const duplicate =
+                        !inventoryEntryError(entry) &&
+                        (availableInventory.some(
+                          (prior) => inventoryDuplicateKey(prior) === inventoryDuplicateKey(entry),
+                        ) ||
+                          priorEntries.some(
+                            (prior) =>
+                              inventoryDuplicateKey(prior) === inventoryDuplicateKey(entry),
+                          ));
+                      const rowError =
+                        inventoryEntryError(entry) ??
+                        (duplicate ? "Duplicate record detected." : null);
+                      return (
+                        <fieldset
+                          key={entry.key}
+                          className="space-y-3 rounded-md border border-border p-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <legend className="text-sm font-semibold">
+                              Imported record {index + 1}
+                            </legend>
+                            <span
+                              className={
+                                rowError
+                                  ? "text-sm text-destructive"
+                                  : "text-sm text-muted-foreground"
+                              }
+                            >
+                              {rowError ?? "Valid"}
+                            </span>
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <label className="text-sm">
+                              ID or username
+                              <Input
+                                className="mt-1"
+                                value={entry.username}
+                                autoComplete="off"
+                                onChange={(event) =>
+                                  setBulkEntries(
+                                    bulkEntries.map((item) =>
+                                      item.key === entry.key
+                                        ? { ...item, username: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                            </label>
+                            <label className="text-sm">
+                              Password
+                              <textarea
+                                className="mt-1 min-h-10 w-full rounded-md border border-input bg-background p-3"
+                                autoComplete="off"
+                                spellCheck={false}
+                                value={entry.password}
+                                onChange={(event) =>
+                                  setBulkEntries(
+                                    bulkEntries.map((item) =>
+                                      item.key === entry.key
+                                        ? { ...item, password: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                            </label>
+                          </div>
+                          <label className="block text-sm">
+                            Additional specifications
+                            <textarea
+                              className="mt-1 min-h-16 w-full rounded-md border border-input bg-background p-3"
+                              value={entry.specifications}
+                              onChange={(event) =>
+                                setBulkEntries(
+                                  bulkEntries.map((item) =>
+                                    item.key === entry.key
+                                      ? { ...item, specifications: event.target.value }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                          <label className="block text-sm">
+                            Delivery instructions
+                            <textarea
+                              className="mt-1 min-h-16 w-full rounded-md border border-input bg-background p-3"
+                              value={entry.deliveryInstructions}
+                              onChange={(event) =>
+                                setBulkEntries(
+                                  bulkEntries.map((item) =>
+                                    item.key === entry.key
+                                      ? { ...item, deliveryInstructions: event.target.value }
+                                      : item,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                        </fieldset>
+                      );
+                    })}
+                  </div>
                 )}
-              </div>
+              </section>
               <label className="block text-sm">
                 Specifications{" "}
                 <span className="text-muted-foreground">(one per line: Name: value)</span>
@@ -662,7 +1159,7 @@ export function AdminProducts() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={formBusy}>
+                <Button type="submit" disabled={formBusy || inventorySaveId !== null}>
                   {formBusy ? "Saving…" : "Save product"}
                 </Button>
               </DialogFooter>
@@ -760,98 +1257,6 @@ export function AdminProducts() {
               No product activity has been recorded.
             </p>
           )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={Boolean(inventoryProduct)}
-        onOpenChange={(open) => {
-          if (!open && !inventoryBusy) closeInventory();
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add secure delivery inventory</DialogTitle>
-            <DialogDescription>
-              Each record is stored in the protected delivery table and revealed only to its
-              purchaser. Its contents are not returned to the dashboard or included in activity
-              logs.
-            </DialogDescription>
-          </DialogHeader>
-          <p className="text-sm">
-            <strong>{inventoryProduct?.title}</strong> · Sellable stock:{" "}
-            {inventoryProduct?.stock ?? "—"} · Available delivery records:{" "}
-            {inventoryCount ?? "checking…"}
-          </p>
-          <label className="text-sm">
-            One delivery record
-            <textarea
-              className="mt-1 min-h-32 w-full rounded-md border border-input bg-background p-3"
-              maxLength={10000}
-              value={inventoryContent}
-              onChange={(event) => {
-                setInventoryContent(event.target.value);
-                setInventoryReference(null);
-              }}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </label>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={inventoryBusy}
-              onClick={closeInventory}
-            >
-              {inventoryReturnForm ? "Return to product form" : "Cancel"}
-            </Button>
-            <Button
-              type="button"
-              disabled={inventoryBusy || !inventoryContent.trim() || inventoryCount === null}
-              onClick={() => setInventoryConfirmationOpen(true)}
-            >
-              Review secure record
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={inventoryConfirmationOpen}
-        onOpenChange={(open) => {
-          if (!inventoryBusy) setInventoryConfirmationOpen(open);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm delivery inventory</DialogTitle>
-            <DialogDescription>
-              Add one protected delivery record for {inventoryProduct?.title}. Stock increases by
-              one. The value is not written to the audit log.
-            </DialogDescription>
-          </DialogHeader>
-          <p className="rounded-md border border-border p-3 text-sm">
-            Confirm that the record entered in the previous dialog is correct. It will not be
-            displayed here.
-          </p>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={inventoryBusy}
-              onClick={() => setInventoryConfirmationOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              disabled={inventoryBusy}
-              onClick={() => void confirmAddInventory()}
-            >
-              {inventoryBusy ? "Saving securely…" : "Add record"}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </section>

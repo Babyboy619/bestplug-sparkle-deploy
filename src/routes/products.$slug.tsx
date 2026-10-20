@@ -3,18 +3,10 @@ import { useEffect, useState } from "react";
 import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { supabase } from "@/integrations/supabase/client";
 import { addCartItem } from "@/lib/cart";
+import { BuyNowButton } from "@/components/buy-now-button";
 import type { CatalogProduct } from "@/lib/catalog.types";
 import { pageHead } from "@/lib/metadata";
 import type { Database } from "@/integrations/supabase/types";
@@ -33,19 +25,12 @@ function Details() {
   const { user } = useAuthUser();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState("1");
-  const [busy, setBusy] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [insufficientFunds, setInsufficientFunds] = useState(false);
   useEffect(() => {
     let active = true;
     setLoading(true);
-    setSuccess(false);
     setMessage("");
-    setInsufficientFunds(false);
     void supabase
       .from("products")
       .select("id,title,slug,description,price,currency,stock,product_status,metadata")
@@ -162,137 +147,25 @@ function Details() {
               >
                 <ShoppingCart aria-hidden="true" /> {cartBusy ? "Adding…" : "Add to Cart"}
               </Button>
-              {user ? (
-                <form
-                  className="mt-6 space-y-3"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    setConfirmOpen(true);
-                  }}
-                >
-                  <label className="block text-sm">
-                    Quantity
-                    <Input
-                      className="mt-2 w-24"
-                      type="number"
-                      min="1"
-                      max={Math.min(20, product.stock)}
-                      step="1"
-                      required
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                    />
-                  </label>
-                  <Button
-                    type="submit"
-                    disabled={
-                      busy ||
-                      product.stock === 0 ||
-                      product.product_status !== "published" ||
-                      success
-                    }
-                  >
-                    {success ? "Purchase complete" : "Review purchase"}
-                  </Button>
-                </form>
-              ) : (
-                <Button asChild className="mt-6">
-                  <Link to="/auth">Sign in to purchase</Link>
-                </Button>
-              )}
-              {success && (
-                <Button asChild variant="outline" className="mt-3">
-                  <Link to="/wallet">View delivered details</Link>
-                </Button>
-              )}
-              {insufficientFunds && (
-                <Button asChild variant="outline" className="mt-3">
-                  <Link to="/wallet">Fund your wallet</Link>
-                </Button>
-              )}
-              <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Confirm purchase</DialogTitle>
-                    <DialogDescription>
-                      Review the current listing and quantity before paying from your wallet.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-2 rounded-md border border-border bg-card p-4 text-sm">
-                    <p className="font-semibold">{product.title}</p>
-                    <p className="text-muted-foreground">Quantity: {Number(quantity)}</p>
-                    <p className="flex justify-between gap-4 border-t border-border pt-2 font-semibold">
-                      <span>Total</span>
-                      <span>
-                        {new Intl.NumberFormat("en-NG", {
-                          style: "currency",
-                          currency: product.currency,
-                        }).format(Number(product.price) * Number(quantity))}
-                      </span>
-                    </p>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => setConfirmOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      disabled={
-                        busy ||
-                        product.stock === 0 ||
-                        product.product_status !== "published" ||
-                        success
-                      }
-                      onClick={async () => {
-                        setBusy(true);
-                        setMessage("");
-                        setInsufficientFunds(false);
-                        try {
-                          const wallet = await supabase.rpc("ensure_user_wallet");
-                          if (wallet.error) {
-                            setMessage(wallet.error.message);
-                            setInsufficientFunds(
-                              wallet.error.message.includes("Insufficient wallet balance"),
-                            );
-                            setConfirmOpen(false);
-                            return;
-                          }
-                          const { error } = await supabase.rpc("purchase_with_wallet", {
-                            _product_id: product.id,
-                            _quantity: Number(quantity),
-                          });
-                          if (error) {
-                            setMessage(error.message);
-                            setInsufficientFunds(
-                              error.message.includes("Insufficient wallet balance"),
-                            );
-                            setConfirmOpen(false);
-                            return;
-                          }
-                          setMessage(
-                            "Purchase complete. Your account details are in Wallet & orders.",
-                          );
-                          setSuccess(true);
-                          setProduct({ ...product, stock: product.stock - Number(quantity) });
-                          setConfirmOpen(false);
-                        } catch {
-                          setMessage("The purchase could not be completed. Please try again.");
-                          setConfirmOpen(false);
-                        } finally {
-                          setBusy(false);
+              <BuyNowButton
+                productId={product.id}
+                title={product.title}
+                available={product.stock > 0}
+                published={product.product_status === "published"}
+                onPurchased={(availableStock) =>
+                  setProduct((current) =>
+                    current
+                      ? {
+                          ...current,
+                          stock: availableStock,
+                          product_status:
+                            availableStock === 0 ? "unavailable" : current.product_status,
                         }
-                      }}
-                    >
-                      {busy ? "Processing…" : "Confirm and pay"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                      : current,
+                  )
+                }
+                className="mt-6"
+              />
             </div>
           </div>
         )}
