@@ -914,8 +914,6 @@ export type Database = {
         }
         Returns: Json
       }
-<<<<<<< HEAD
-=======
       admin_save_product_with_logs: {
         Args: {
           _category_id: string | null
@@ -931,17 +929,6 @@ export type Database = {
         }
         Returns: Json
       }
-      admin_update_available_inventory: {
-        Args: {
-          _credential_id: string
-          _delivery_instructions: string
-          _password: string
-          _specifications: Json
-          _username: string
-        }
-        Returns: boolean
-      }
->>>>>>> 72a40b3 (new)
       admin_search_categories: {
         Args: never
         Returns: {
