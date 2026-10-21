@@ -15,6 +15,7 @@ import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthUser } from "@/hooks/use-auth-user";
+import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
@@ -39,11 +40,9 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   const { user } = useAuthUser();
+  const { balance, balanceLoading, balanceError } = useWalletBalance(user?.id);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [balance, setBalance] = useState<number | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState(false);
-  const [balanceError, setBalanceError] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [categories, setCategories] = useState<
@@ -75,30 +74,22 @@ function HomePage() {
 
   useEffect(() => {
     if (!user) {
-      setBalance(null);
       setDisplayName("");
       setAvatarUrl("");
-      setBalanceError(false);
       return;
     }
 
     let active = true;
-    setBalanceLoading(true);
-    void Promise.all([
-      supabase.rpc("ensure_user_wallet"),
-      supabase.from("profiles").select("display_name,avatar_url").eq("id", user.id).maybeSingle(),
-    ]).then(([wallet, profile]) => {
-      if (!active) return;
-      if (wallet.error) {
-        setBalanceError(true);
-      } else {
-        setBalance(Number(wallet.data?.[0]?.balance ?? 0));
-        setBalanceError(false);
-      }
-      setDisplayName(profile.data?.display_name?.trim() ?? "");
-      setAvatarUrl(profile.data?.avatar_url ?? "");
-      setBalanceLoading(false);
-    });
+    void supabase
+      .from("profiles")
+      .select("display_name,avatar_url")
+      .eq("id", user.id)
+      .maybeSingle()
+      .then(({ data: profile }) => {
+        if (!active) return;
+        setDisplayName(profile?.display_name?.trim() ?? "");
+        setAvatarUrl(profile?.avatar_url ?? "");
+      });
 
     return () => {
       active = false;

@@ -42,6 +42,9 @@ function PaymentCallbackPage() {
               ? "Your wallet has been updated."
               : "Payment has not been confirmed."),
         );
+        if (result.status === "success") {
+          window.dispatchEvent(new Event("bestplug-wallet-updated"));
+        }
       })
       .catch(() => {
         if (!active) return;

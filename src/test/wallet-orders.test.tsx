@@ -57,7 +57,7 @@ function query(data: unknown) {
     limit: () => current,
     eq: () => current,
     in: () => current,
-    maybeSingle: async () => ({ data: null, error: null }),
+    maybeSingle: async () => ({ data, error: null }),
     then: (resolve: (value: { data: unknown; error: null }) => unknown) =>
       Promise.resolve({ data, error: null }).then(resolve),
   };
@@ -71,6 +71,7 @@ describe("customer wallet orders", () => {
       error: null,
     });
     mocks.from.mockReset().mockImplementation((table: string) => {
+      if (table === "wallets") return query({ user_id: mocks.user.id, balance: 7500 });
       if (table === "wallet_transactions") return query([]);
       if (table === "orders") return query([order]);
       if (table === "order_items") return query([item]);
