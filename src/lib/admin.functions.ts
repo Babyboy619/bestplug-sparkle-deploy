@@ -655,25 +655,21 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
       }
       slug = existing.slug;
     }
-    const { data: result, error } = await context.supabase.rpc(
-      "admin_save_product_with_logs",
-      {
-        _reference: data.reference,
-        // PostgreSQL accepts null for these UUID arguments; generated RPC types omit nullability.
-        _product_id: data.id as string,
-        _title: data.title,
-        _slug: slug,
-        _category_id: data.categoryId as string,
-        _description: data.description,
-        _price: data.price,
-        _status: data.status,
-        _metadata: {
-          specifications: data.specifications,
-          delivery_instructions: data.deliveryInstructions.trim(),
-        },
-        _logs: data.logs,
+    const { data: result, error } = await context.supabase.rpc("admin_save_product_with_logs", {
+      _reference: data.reference,
+      _product_id: data.id,
+      _title: data.title,
+      _slug: slug,
+      _category_id: data.categoryId,
+      _description: data.description,
+      _price: data.price,
+      _status: data.status,
+      _metadata: {
+        specifications: data.specifications,
+        delivery_instructions: data.deliveryInstructions.trim(),
       },
-    );
+      _logs: data.logs,
+    });
     if (error || !result) {
       if (error) console.error("Administrator product save failed:", error);
       throw new Error(error?.message ?? "Product could not be saved.");

@@ -10,13 +10,6 @@
       "breakpoints": true
     },
     {
-      "idx": 12,
-      "version": "7",
-      "when": 1792463662953,
-      "tag": "0012_secure_buy_now",
-      "breakpoints": true
-    },
-    {
       "idx": 1,
       "version": "7",
       "when": 1792106077164,
@@ -103,13 +96,15 @@
     {
       "idx": 13,
       "version": "7",
-<<<<<<< HEAD
-      "when": 1792476416813,
-      "tag": "0013_restore_wallet_buy_now_function",
-=======
       "when": 1792463662954,
       "tag": "0013_plain_product_logs",
->>>>>>> 72a40b3 (new)
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792476416813,
+      "tag": "0013_restore_wallet_buy_now_function",
       "breakpoints": true
     }
   ]
