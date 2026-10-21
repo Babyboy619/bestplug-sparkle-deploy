@@ -14,26 +14,14 @@ import {
 import {
   adminArchiveProduct,
   adminProductActivity,
-  adminProductInventorySummary,
-  adminListAvailableInventory,
   adminSaveProduct,
-  adminUpdateAvailableInventory,
   adminSearchProducts,
 } from "@/lib/admin.functions";
-import {
-  emptyInventoryDraft,
-  inventoryDuplicateKey,
-  inventoryEntryError,
-  inventoryEntryPayload,
-  parseBulkInventory,
-  type InventoryDraft,
-} from "@/lib/admin-inventory";
+import { splitInventoryLines } from "@/lib/admin-inventory";
 
 type ProductResult = Awaited<ReturnType<typeof adminSearchProducts>>;
 type AdminProduct = NonNullable<ProductResult["products"]>[number];
 type ActivityResult = Awaited<ReturnType<typeof adminProductActivity>>;
-type AvailableInventoryResult = Awaited<ReturnType<typeof adminListAvailableInventory>>;
-type ManagedInventoryEntry = InventoryDraft & { credentialId: string; content: string };
 type ProductStatus = "draft" | "published" | "unavailable";
 
 type ProductForm = {
@@ -43,9 +31,9 @@ type ProductForm = {
   description: string;
   price: string;
   status: ProductStatus;
-  specifications: string;
+  specifications: Record<string, string>;
   deliveryInstructions: string;
-  inventory: InventoryDraft[];
+  logs: string;
 };
 
 const emptyForm: ProductForm = {
@@ -55,9 +43,9 @@ const emptyForm: ProductForm = {
   description: "",
   price: "",
   status: "draft",
-  specifications: "",
+  specifications: {},
   deliveryInstructions: "",
-  inventory: [],
+  logs: "",
 };
 
 function productMetadata(product: AdminProduct): {
@@ -94,9 +82,6 @@ export function AdminProducts() {
   const saveProduct = useServerFn(adminSaveProduct);
   const archiveProduct = useServerFn(adminArchiveProduct);
   const loadActivity = useServerFn(adminProductActivity);
-  const loadInventorySummary = useServerFn(adminProductInventorySummary);
-  const loadAvailableInventory = useServerFn(adminListAvailableInventory);
-  const updateAvailableInventory = useServerFn(adminUpdateAvailableInventory);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | ProductStatus | "archived">("all");
   const [categoryId, setCategoryId] = useState("all");
@@ -109,23 +94,11 @@ export function AdminProducts() {
   const [formReference, setFormReference] = useState<string | null>(null);
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [bulkText, setBulkText] = useState("");
-  const [bulkEntries, setBulkEntries] = useState<InventoryDraft[]>([]);
   const [archiveTarget, setArchiveTarget] = useState<AdminProduct | null>(null);
   const [archiveBusy, setArchiveBusy] = useState(false);
   const [activityProduct, setActivityProduct] = useState<AdminProduct | null>(null);
   const [activity, setActivity] = useState<ActivityResult>([]);
   const [activityLoading, setActivityLoading] = useState(false);
-  const [inventorySummary, setInventorySummary] = useState<{
-    total: number;
-    available: number;
-    sold: number;
-    reserved: number;
-    newlyAdded: number;
-  } | null>(null);
-  const [availableInventory, setAvailableInventory] = useState<ManagedInventoryEntry[]>([]);
-  const [availableInventoryLoading, setAvailableInventoryLoading] = useState(false);
-  const [inventorySaveId, setInventorySaveId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -176,61 +149,6 @@ export function AdminProducts() {
     };
   }, [activityProduct, refreshIndex, loadActivity]);
 
-  useEffect(() => {
-    if (!form?.id) {
-      setInventorySummary(null);
-      setAvailableInventory([]);
-      setAvailableInventoryLoading(false);
-      return;
-    }
-    let active = true;
-    setInventorySummary(null);
-    setAvailableInventory([]);
-    setAvailableInventoryLoading(true);
-    void loadInventorySummary({ data: { productId: form.id } })
-      .then((summary) => {
-        if (active) setInventorySummary(summary);
-      })
-      .catch((cause: unknown) => {
-        if (active)
-          toast.error(cause instanceof Error ? cause.message : "Inventory summary is unavailable.");
-      });
-    void loadAvailableInventory({ data: { productId: form.id } })
-      .then((entries: AvailableInventoryResult) => {
-        if (!active) return;
-        setAvailableInventory(
-          entries.map((entry) => ({
-            key: entry.id,
-            credentialId: entry.id,
-            content: entry.content,
-            username: entry.username ?? "",
-            password: entry.password ?? "",
-            specifications:
-              typeof entry.specifications === "object" &&
-              entry.specifications !== null &&
-              !Array.isArray(entry.specifications)
-                ? Object.entries(entry.specifications)
-                    .map(([key, value]) => `${key}: ${String(value)}`)
-                    .join("\n")
-                : "",
-            deliveryInstructions: entry.delivery_instructions ?? "",
-          })),
-        );
-      })
-      .catch((cause: unknown) => {
-        if (active)
-          toast.error(
-            cause instanceof Error ? cause.message : "Available inventory is unavailable.",
-          );
-      })
-      .finally(() => {
-        if (active) setAvailableInventoryLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [form?.id, loadAvailableInventory, loadInventorySummary]);
-
   const pageCount = Math.max(1, Math.ceil((result?.total ?? 0) / 20));
 
   function editProduct(product: AdminProduct) {
@@ -242,62 +160,17 @@ export function AdminProducts() {
       description: product.description ?? "",
       price: String(product.price),
       status: product.product_status,
-      specifications: Object.entries(metadata.specifications)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join("\n"),
+      specifications: metadata.specifications,
       deliveryInstructions: metadata.deliveryInstructions,
-      inventory: [],
+      logs: "",
     });
     setFormReference(crypto.randomUUID());
-    setBulkText("");
-    setBulkEntries([]);
     setFormError(null);
-  }
-
-  async function saveAvailableEntry(entry: ManagedInventoryEntry) {
-    const validationError = inventoryEntryError(entry);
-    if (validationError) {
-      setFormError(`Available inventory: ${validationError}`);
-      return;
-    }
-    setInventorySaveId(entry.credentialId);
-    setFormError(null);
-    try {
-      await updateAvailableInventory({
-        data: { credentialId: entry.credentialId, ...inventoryEntryPayload(entry) },
-      });
-      toast.success("Available inventory entry updated.");
-      setRefreshIndex((value) => value + 1);
-    } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : "Inventory entry could not be updated.");
-    } finally {
-      setInventorySaveId(null);
-    }
   }
 
   async function submitProduct(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!form) return;
-    const specs: Record<string, string> = {};
-    for (const line of form.specifications.split("\n")) {
-      if (!line.trim()) continue;
-      const separator = line.indexOf(":");
-      if (separator <= 0 || !line.slice(separator + 1).trim()) {
-        setFormError("Enter specifications one per line as “Name: value”.");
-        return;
-      }
-      const key = line.slice(0, separator).trim();
-      if (key.length > 100 || Object.hasOwn(specs, key)) {
-        setFormError("Specification names must be unique and at most 100 characters.");
-        return;
-      }
-      specs[key] = line.slice(separator + 1).trim();
-    }
-    if (Object.keys(specs).length > 20) {
-      setFormError("A product can have at most 20 specifications.");
-      return;
-    }
-
     const price = Number(form.price);
     if (
       !Number.isFinite(price) ||
@@ -311,22 +184,14 @@ export function AdminProducts() {
       setFormError("The save request could not be prepared. Close and reopen the product form.");
       return;
     }
-    const entries = [...form.inventory, ...bulkEntries];
-    const seen = new Set(
-      availableInventory.filter((entry) => !inventoryEntryError(entry)).map(inventoryDuplicateKey),
-    );
-    for (const [index, entry] of entries.entries()) {
-      const entryError = inventoryEntryError(entry);
-      if (entryError) {
-        setFormError(`Inventory record ${index + 1}: ${entryError}`);
-        return;
-      }
-      const duplicateKey = inventoryDuplicateKey(entry);
-      if (seen.has(duplicateKey)) {
-        setFormError(`Inventory record ${index + 1} duplicates an existing or submitted record.`);
-        return;
-      }
-      seen.add(duplicateKey);
+    const logs = splitInventoryLines(form.logs);
+    if (logs.length > 1000) {
+      setFormError("A product can receive at most 1000 log lines per save.");
+      return;
+    }
+    if (logs.some((log) => log.length > 10000)) {
+      setFormError("Each log line must be 10000 characters or fewer.");
+      return;
     }
     setFormBusy(true);
     setFormError(null);
@@ -340,18 +205,16 @@ export function AdminProducts() {
           description: form.description,
           price,
           status: form.status,
-          specifications: specs,
+          specifications: form.specifications,
           deliveryInstructions: form.deliveryInstructions,
-          inventory: entries.map(inventoryEntryPayload),
+          logs,
         },
       });
       toast.success(
-        `${form.id ? "Product updated" : "Product created"}. ${saved.savedCount} inventory ${saved.savedCount === 1 ? "entry" : "entries"} saved successfully. Available stock: ${saved.stock}.`,
+        `${form.id ? "Product updated" : "Product created"}. ${saved.savedCount} ${saved.savedCount === 1 ? "log" : "logs"} saved successfully. Available stock: ${saved.stock}.`,
       );
       setForm(null);
       setFormReference(null);
-      setBulkEntries([]);
-      setBulkText("");
       setRefreshIndex((value) => value + 1);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Product could not be saved.";
@@ -364,21 +227,6 @@ export function AdminProducts() {
       setFormBusy(false);
     }
   }
-
-  const previewValidCount = (() => {
-    const seen = new Set(
-      availableInventory.filter((entry) => !inventoryEntryError(entry)).map(inventoryDuplicateKey),
-    );
-    let count = 0;
-    for (const entry of [...(form?.inventory ?? []), ...bulkEntries]) {
-      if (inventoryEntryError(entry)) continue;
-      const key = inventoryDuplicateKey(entry);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (bulkEntries.some((bulkEntry) => bulkEntry.key === entry.key)) count += 1;
-    }
-    return count;
-  })();
 
   async function confirmArchive() {
     if (!archiveTarget) return;
@@ -416,11 +264,6 @@ export function AdminProducts() {
           onClick={() => {
             setForm({ ...emptyForm });
             setFormReference(crypto.randomUUID());
-            setBulkText("");
-            setBulkEntries([]);
-            setInventorySummary(null);
-            setAvailableInventory([]);
-            setAvailableInventoryLoading(false);
             setFormError(null);
           }}
         >
@@ -684,6 +527,7 @@ export function AdminProducts() {
                   />
                 </label>
               </div>
+<<<<<<< HEAD
               <div className="rounded-md border border-border p-3">
                 <h3 className="text-sm font-semibold">Inventory summary</h3>
                 {form.id ? (
@@ -1155,14 +999,16 @@ export function AdminProducts() {
                   </div>
                 )}
               </section>
+=======
+>>>>>>> 72a40b3 (new)
               <label className="block text-sm">
-                Specifications{" "}
-                <span className="text-muted-foreground">(one per line: Name: value)</span>
+                Add logs, 1 log per line
                 <textarea
-                  className="mt-1 min-h-24 w-full rounded-md border border-input bg-background p-3"
-                  placeholder={"Platform: Instagram\nRegion: Nigeria"}
-                  value={form.specifications}
-                  onChange={(event) => setForm({ ...form, specifications: event.target.value })}
+                  className="mt-1 min-h-36 w-full rounded-md border border-input bg-background p-3 font-mono text-sm"
+                  value={form.logs}
+                  onChange={(event) => setForm({ ...form, logs: event.target.value })}
+                  autoComplete="off"
+                  spellCheck={false}
                 />
               </label>
               <label className="block text-sm">
@@ -1190,7 +1036,7 @@ export function AdminProducts() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={formBusy || inventorySaveId !== null}>
+                <Button type="submit" disabled={formBusy}>
                   {formBusy ? "Saving…" : "Save product"}
                 </Button>
               </DialogFooter>

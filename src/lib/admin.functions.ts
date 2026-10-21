@@ -626,22 +626,7 @@ const productInputSchema = z.object({
         Object.keys(items).length <= 20 && Object.keys(items).every((key) => key.length <= 100),
     ),
   deliveryInstructions: z.string().max(5000),
-  inventory: z
-    .array(
-      z.object({
-        username: z.string().trim().min(1).max(1000),
-        password: z
-          .string()
-          .min(1)
-          .max(5000)
-          .refine((value) => value.trim().length > 0),
-        specifications: z
-          .record(z.string().max(100), z.string().max(500))
-          .refine((items) => Object.keys(items).length <= 20),
-        deliveryInstructions: z.string().max(5000),
-      }),
-    )
-    .max(1000),
+  logs: z.array(z.string().trim().min(1).max(10000)).max(1000),
 });
 
 export const adminSaveProduct = createServerFn({ method: "POST" })
@@ -671,7 +656,7 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
       slug = existing.slug;
     }
     const { data: result, error } = await context.supabase.rpc(
-      "admin_save_product_with_inventory",
+      "admin_save_product_with_logs",
       {
         _reference: data.reference,
         // PostgreSQL accepts null for these UUID arguments; generated RPC types omit nullability.
@@ -686,7 +671,7 @@ export const adminSaveProduct = createServerFn({ method: "POST" })
           specifications: data.specifications,
           delivery_instructions: data.deliveryInstructions.trim(),
         },
-        _inventory: data.inventory,
+        _logs: data.logs,
       },
     );
     if (error || !result) {

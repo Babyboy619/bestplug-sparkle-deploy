@@ -6,6 +6,7 @@ import { SiteFrame } from "@/components/site-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthUser } from "@/hooks/use-auth-user";
+import { useWalletBalance } from "@/hooks/use-wallet-balance";
 import { supabase } from "@/integrations/supabase/client";
 import { pageHead } from "@/lib/metadata";
 import { siteConfig } from "@/lib/site-config";
@@ -29,7 +30,9 @@ export const Route = createFileRoute("/wallet")({
 
 function WalletPage() {
   const { user, loading } = useAuthUser();
-  const [balance, setBalance] = useState(0);
+  const { balance, balanceLoading, balanceError, refresh: refreshBalance } = useWalletBalance(
+    user?.id,
+  );
   const [transactions, setTransactions] = useState<Tx[]>([]);
   const [orders, setOrders] = useState<OrderView[]>([]);
   const [message, setMessage] = useState("");
@@ -40,12 +43,11 @@ function WalletPage() {
   const verifyTopup = useServerFn(verifyPaystarkTopup);
 
   async function refresh() {
-    const wallet = await supabase.rpc("ensure_user_wallet");
-    if (wallet.error) {
-      setMessage(wallet.error.message);
+    const currentBalance = await refreshBalance();
+    if (currentBalance === null) {
+      setMessage("Your wallet balance could not be loaded. Please try again.");
       return;
     }
-    setBalance(Number(wallet.data?.[0]?.balance ?? 0));
     const [tx, parentOrders] = await Promise.all([
       supabase
         .from("wallet_transactions")
@@ -142,8 +144,15 @@ function WalletPage() {
             <div className="mt-7 grid gap-8 border-y border-border py-7 md:grid-cols-2">
               <div>
                 <p className="text-sm text-muted-foreground">Available balance</p>
-                <p className="brand-title mt-3 text-4xl font-semibold text-primary">
-                  ₦{balance.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                <p
+                  className="brand-title mt-3 text-4xl font-semibold text-primary"
+                  aria-live="polite"
+                >
+                  {balanceLoading
+                    ? "Loading…"
+                    : balanceError || balance === null
+                      ? "Balance unavailable"
+                      : `₦${balance.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 </p>
                 <p className="mt-3 text-xs text-muted-foreground">{user.email}</p>
               </div>
